@@ -26,7 +26,14 @@ func NewRouter(ctx context.Context, log *slog.Logger, route *chi.Mux, services *
 	route.Route(
 		api, func(r chi.Router) {
 			r.Get("/ping", Ping())
-			NewUserRoutes(ctx, log, r, services.User)
+			NewAuthRoutes(ctx, log, r, services.User)
+			r.Group(
+				func(g chi.Router) {
+					g.Use(AuthMiddleware(ctx, log, services.User))
+					NewUserRoutes(ctx, log, r, services.User)
+					NewTaskRoutes(ctx, log, r, services.Task)
+				},
+			)
 		},
 	)
 }

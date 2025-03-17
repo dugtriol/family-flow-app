@@ -8,9 +8,28 @@ import (
 
 	"family-flow-app/internal/service"
 	"family-flow-app/pkg/response"
+	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
 	"github.com/go-playground/validator/v10"
 )
+
+const (
+	authString = "/auth"
+)
+
+type AuthRoutes struct {
+	userService service.User
+}
+
+func NewAuthRoutes(ctx context.Context, log *slog.Logger, route chi.Router, userService service.User) {
+	u := AuthRoutes{userService: userService}
+	route.Route(
+		authString, func(r chi.Router) {
+			r.Post("/register", u.create(ctx, log))
+			r.Post("/login", u.login(ctx, log))
+		},
+	)
+}
 
 type inputUserCreate struct {
 	Name     string `json:"name" validate:"required"`
@@ -19,7 +38,7 @@ type inputUserCreate struct {
 	Role     string `json:"role" validate:"required,oneof=Parent Child"`
 }
 
-func (u *Routes) create(ctx context.Context, log *slog.Logger) http.HandlerFunc {
+func (u *AuthRoutes) create(ctx context.Context, log *slog.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var input inputUserCreate
 		var err error
@@ -63,7 +82,7 @@ type inputUserLogin struct {
 	Password string `json:"password" validate:"required"`
 }
 
-func (u *Routes) login(ctx context.Context, log *slog.Logger) http.HandlerFunc {
+func (u *AuthRoutes) login(ctx context.Context, log *slog.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var input inputUserLogin
 		var err error

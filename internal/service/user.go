@@ -74,10 +74,8 @@ func (u *UserService) Create(ctx context.Context, log *slog.Logger, input UserCr
 	return tokenString, nil
 }
 
-func (u *UserService) GetById(ctx context.Context, log *slog.Logger, input UserGetByIdInput) (
-	entity.User, error,
-) {
-	user, err := u.userRepo.GetByID(ctx, input.Id)
+func (u *UserService) GetById(ctx context.Context, log *slog.Logger, id string) (entity.User, error) {
+	user, err := u.userRepo.GetByID(ctx, id)
 	if err != nil {
 		if err == repoerrs.ErrNotFound {
 			return entity.User{}, ErrUserNotFound

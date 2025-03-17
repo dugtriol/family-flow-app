@@ -2,6 +2,7 @@ package v1
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -17,16 +18,14 @@ const (
 	userString = "/user"
 )
 
-type Routes struct {
+type UserRoutes struct {
 	userService service.User
 }
 
 func NewUserRoutes(ctx context.Context, log *slog.Logger, route chi.Router, userService service.User) {
-	u := Routes{userService: userService}
+	u := UserRoutes{userService: userService}
 	route.Route(
 		userString, func(r chi.Router) {
-			r.Post("/register", u.create(ctx, log))
-			r.Post("/login", u.login(ctx, log))
 			r.Get("/{id}", u.get(ctx, log))
 		},
 	)
@@ -36,7 +35,7 @@ type inputUserGet struct {
 	Id string `validate:"uuid"`
 }
 
-func (u *Routes) get(ctx context.Context, log *slog.Logger) http.HandlerFunc {
+func (u *UserRoutes) get(ctx context.Context, log *slog.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var id string
 		var err error
@@ -47,9 +46,9 @@ func (u *Routes) get(ctx context.Context, log *slog.Logger) http.HandlerFunc {
 			return
 		}
 		log.Info(fmt.Sprintf("Handler - User - Create - validate is ok"))
-		user, err := u.userService.GetById(ctx, log, service.UserGetByIdInput{Id: id})
+		user, err := u.userService.GetById(ctx, log, id)
 		if err != nil {
-			if err == service.ErrUserNotFound {
+			if errors.Is(err, service.ErrUserNotFound) {
 				response.NewError(w, r, log, err, http.StatusBadRequest, MsgUserNotFound)
 				return
 			}
