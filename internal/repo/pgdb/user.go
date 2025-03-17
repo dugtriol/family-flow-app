@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 
 	"family-flow-app/internal/entity"
 	"family-flow-app/internal/repo/repoerrs"
@@ -14,7 +15,7 @@ import (
 )
 
 const (
-	userTable = "user"
+	userTable = "users"
 )
 
 type UserRepo struct {
@@ -26,10 +27,11 @@ func NewUserRepo(db *postgres.Database) *UserRepo {
 }
 
 func (r *UserRepo) Create(ctx context.Context, user entity.User) (string, error) {
-	sql, args, _ := r.Builder.Insert(userTable).Columns("username", "first_name", "last_name").Values(
-		user.Username,
-		user.FirstName,
-		user.LastName,
+	sql, args, _ := r.Builder.Insert(userTable).Columns("name", "email", "password", "role").Values(
+		user.Name,
+		user.Email,
+		user.Password,
+		user.Role,
 	).Suffix("RETURNING id").ToSql()
 
 	var id string
@@ -46,54 +48,36 @@ func (r *UserRepo) Create(ctx context.Context, user entity.User) (string, error)
 	return id, nil
 }
 
-func (r *UserRepo) GetById(ctx context.Context, id string) (entity.User, error) {
-	sql, args, _ := r.Builder.
-		Select("*").
-		From(userTable).
-		Where("id = ?", id).
-		ToSql()
-
-	var user entity.User
-	err := r.Cluster.QueryRow(ctx, sql, args...).Scan(
-		&user.Id,
-		&user.Username,
-		&user.FirstName,
-		&user.LastName,
-		&user.CreatedAt,
-		&user.UpdatedAt,
-	)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return entity.User{}, repoerrs.ErrNotFound
-		}
-		return entity.User{}, fmt.Errorf("UserRepo - GetById - r.Cluster.QueryRow: %v", err)
-	}
-
-	return user, nil
+func (u *UserRepo) GetByID(ctx context.Context, id string) (entity.User, error) {
+	return u.getByField(ctx, "id", id)
 }
 
-func (r *UserRepo) GetByUsername(ctx context.Context, username string) (entity.User, error) {
-	sql, args, _ := r.Builder.
+func (u *UserRepo) GetByEmail(ctx context.Context, email string) (entity.User, error) {
+	return u.getByField(ctx, "email", email)
+}
+func (u *UserRepo) getByField(ctx context.Context, field, value string) (entity.User, error) {
+	var err error
+	sql, args, _ := u.Builder.
 		Select("*").
 		From(userTable).
-		Where("username = ?", username).
+		Where(fmt.Sprintf("%v = ?", field), value).
 		ToSql()
+	log.Printf("UserRepo - GetByField - sql %s args %s \n", sql, args)
 
-	var user entity.User
-	err := r.Cluster.QueryRow(ctx, sql, args...).Scan(
-		&user.Id,
-		&user.Username,
-		&user.FirstName,
-		&user.LastName,
-		&user.CreatedAt,
-		&user.UpdatedAt,
+	var output entity.User
+	err = u.Cluster.QueryRow(ctx, sql, args...).Scan(
+		&output.Id,
+		&output.Name,
+		&output.Email,
+		&output.Password,
+		&output.Role,
+		&output.FamilyId,
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return entity.User{}, repoerrs.ErrNotFound
 		}
-		return entity.User{}, fmt.Errorf("UserRepo - GetByUsername - r.Cluster.QueryRow: %v", err)
+		return entity.User{}, fmt.Errorf("UserRepo - GetByField %s - r.Cluster.QueryRow: %v", field, err)
 	}
-
-	return user, nil
+	return output, nil
 }

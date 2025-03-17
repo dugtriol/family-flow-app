@@ -9,9 +9,9 @@ import (
 )
 
 type User interface {
-	Create(ctx context.Context, input entity.User) (string, error)
-	GetById(ctx context.Context, id string) (entity.User, error)
-	GetByUsername(ctx context.Context, username string) (entity.User, error)
+	Create(ctx context.Context, user entity.User) (string, error)
+	GetByID(ctx context.Context, id string) (entity.User, error)
+	GetByEmail(ctx context.Context, email string) (entity.User, error)
 }
 
 type Repositories struct {

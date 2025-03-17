@@ -1,12 +1,12 @@
 package entity
 
-import "time"
+import "database/sql"
 
 type User struct {
-	Id        string    `db:"id"`
-	Username  string    `db:"username"`
-	FirstName string    `db:"first_name"`
-	LastName  string    `db:"last_name"`
-	CreatedAt time.Time `db:"created_at"`
-	UpdatedAt time.Time `db:"updated_at"`
+	Id       string         `pgdb:"id"`
+	Name     string         `pgdb:"name"`
+	Email    string         `pgdb:"email"`
+	Password string         `pgdb:"password"`
+	Role     string         `pgdb:"role"`
+	FamilyId sql.NullString `pgdb:"family_id"`
 }

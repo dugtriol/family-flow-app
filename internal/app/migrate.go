@@ -17,7 +17,7 @@ const (
 	defaultTimeout  = time.Second
 )
 
-func init() {
+func Migrate() {
 	log.Printf("Migrate: start")
 	conn, ok := os.LookupEnv("POSTGRES_CONN")
 	if !ok {

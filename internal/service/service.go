@@ -9,23 +9,30 @@ import (
 )
 
 type UserCreateInput struct {
-	Username  string
-	FirstName string
-	LastName  string
+	Name     string
+	Email    string
+	Password string
+	Role     string
 }
 
 type UserGetByIdInput struct {
 	Id string
 }
 
-type UserGetByUsernameInput struct {
-	Username string
+type UserGetByEmailInput struct {
+	Email string
+}
+
+type AuthInput struct {
+	Email    string
+	Password string
 }
 
 type User interface {
 	Create(ctx context.Context, log *slog.Logger, input UserCreateInput) (string, error)
+	Login(ctx context.Context, log *slog.Logger, input AuthInput) (string, error)
 	GetById(ctx context.Context, log *slog.Logger, input UserGetByIdInput) (entity.User, error)
-	GetByUsername(ctx context.Context, log *slog.Logger, input UserGetByUsernameInput) (
+	GetByEmail(ctx context.Context, log *slog.Logger, input UserGetByEmailInput) (
 		entity.User, error,
 	)
 }
