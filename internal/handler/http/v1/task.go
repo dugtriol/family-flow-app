@@ -38,7 +38,7 @@ func NewTaskRoutes(ctx context.Context, log *slog.Logger, route chi.Router, task
 }
 
 type inputTaskList struct {
-	Status string `json:"status" validate:"omitempty,oneof=active completed overdue"`
+	Status string `validate:"omitempty,oneof=active completed overdue"`
 }
 
 func (t *TaskRoutes) list(ctx context.Context, log *slog.Logger) http.HandlerFunc {
@@ -54,10 +54,7 @@ func (t *TaskRoutes) list(ctx context.Context, log *slog.Logger) http.HandlerFun
 		}
 
 		// Парсим параметры запроса
-		if err := render.DecodeJSON(r.Body, &input); err != nil {
-			response.NewError(w, r, log, err, http.StatusBadRequest, MsgFailedParsing)
-			return
-		}
+		input.Status = r.URL.Query().Get("status")
 
 		// Валидация входных данных
 		if err := validator.New().Struct(input); err != nil {
@@ -84,7 +81,7 @@ func (t *TaskRoutes) list(ctx context.Context, log *slog.Logger) http.HandlerFun
 		}
 
 		w.WriteHeader(http.StatusOK)
-		render.JSON(w, r, tasks)
+		render.JSON(w, r, map[string]interface{}{"tasks": tasks})
 	}
 }
 
@@ -120,12 +117,11 @@ func (t *TaskRoutes) create(ctx context.Context, log *slog.Logger) http.HandlerF
 			return
 		}
 
-		// Создаем задачу
 		id, err := t.taskService.Create(
 			ctx, log, service.TaskCreateInput{
 				Title:       input.Title,
 				Description: input.Description,
-				Status:      "active", // По умолчанию задача активна
+				Status:      "Active",
 				Deadline:    input.Deadline,
 				AssignedTo:  input.AssignedTo,
 				CreatedBy:   user.Id,
