@@ -21,4 +21,9 @@ var (
 
 	ErrCannotCompleteTask = fmt.Errorf("cannot complete task")
 	ErrForbidden          = fmt.Errorf("forbidden")
+	ErrCode               = fmt.Errorf("err code")
+
+	ErrCannotCreateFamily      = fmt.Errorf("cannot create family")
+	ErrCannotAddMemberToFamily = fmt.Errorf("cannot add member to family")
+	ErrFamilyNotFound          = fmt.Errorf("family not found")
 )

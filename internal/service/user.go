@@ -30,6 +30,8 @@ func (u *UserService) Login(ctx context.Context, log *slog.Logger, input AuthInp
 
 	if errors.Is(err, ErrInvalidPassword) {
 		return "", ErrInvalidPassword
+	} else if errors.Is(err, ErrUserNotFound) {
+		return "", ErrUserNotFound
 	} else if err == nil {
 		if tokenString, err = token.Create(output.Id); err != nil {
 			return "", err
@@ -105,7 +107,7 @@ func (u *UserService) isExist(ctx context.Context, log *slog.Logger, input AuthI
 	log.Info(fmt.Sprintf("Service - UserService - isExist"))
 	output, err := u.userRepo.GetByEmail(ctx, input.Email)
 	if err != nil {
-		log.Error(fmt.Sprintf("Service - UserService - isExist - GetByUsername: %v", err))
+		log.Error(fmt.Sprintf("Service - UserService - isExist - GetByEmail: %v", err))
 		return entity.User{}, ErrUserNotFound
 	}
 
@@ -115,4 +117,16 @@ func (u *UserService) isExist(ctx context.Context, log *slog.Logger, input AuthI
 	}
 
 	return output, err
+}
+
+func (u *UserService) AddMemberToFamily(ctx context.Context, log *slog.Logger, input AddMemberToFamilyInput) error {
+	log.Info("Service - UserService - AddMemberToFamily")
+
+	err := u.userRepo.UpdateFamilyID(ctx, input.FamilyId, input.FamilyId)
+	if err != nil {
+		log.Error(fmt.Sprintf("Service - UserService - AddMemberToFamily: %v", err))
+		return ErrCannotAddMemberToFamily
+	}
+
+	return nil
 }

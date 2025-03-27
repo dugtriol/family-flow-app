@@ -12,6 +12,9 @@ type User interface {
 	Create(ctx context.Context, user entity.User) (string, error)
 	GetByID(ctx context.Context, id string) (entity.User, error)
 	GetByEmail(ctx context.Context, email string) (entity.User, error)
+	UpdateFamilyID(ctx context.Context, userID, familyID string) error
+	GetByFamilyID(ctx context.Context, familyID string) ([]entity.User, error)
+	Update(ctx context.Context, user entity.User) error
 }
 
 type Task interface {
@@ -26,14 +29,21 @@ type Task interface {
 	Complete(ctx context.Context, id string, userId string) error
 }
 
+type Family interface {
+	Create(ctx context.Context, family entity.Family) (string, error)
+	GetByID(ctx context.Context, id string) (entity.Family, error)
+}
+
 type Repositories struct {
 	User
 	Task
+	Family
 }
 
 func NewRepositories(db *postgres.Database) *Repositories {
 	return &Repositories{
-		User: pgdb.NewUserRepo(db),
-		Task: pgdb.NewTaskRepo(db),
+		User:   pgdb.NewUserRepo(db),
+		Task:   pgdb.NewTaskRepo(db),
+		Family: pgdb.NewFamilyRepo(db),
 	}
 }

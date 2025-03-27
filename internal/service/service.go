@@ -5,8 +5,10 @@ import (
 	"log/slog"
 	"time"
 
+	"family-flow-app/config"
 	"family-flow-app/internal/entity"
 	"family-flow-app/internal/repo"
+	"family-flow-app/pkg/redis"
 )
 
 type UserCreateInput struct {
@@ -97,18 +99,54 @@ type Task interface {
 	Complete(ctx context.Context, log *slog.Logger, input TaskCompleteInput) error
 }
 
+type InputSendInvite struct {
+	To         []string
+	From       string
+	FromName   string
+	FamilyName string
+}
+
+type Email interface {
+	SendCode(ctx context.Context, to []string) error
+	CompareCode(ctx context.Context, email, code string) (bool, error)
+	GetAllKeys(ctx context.Context) ([]string, error)
+	SendInvite(ctx context.Context, invite InputSendInvite) error
+}
+
+type FamilyCreateInput struct {
+	Name          string
+	CreatorUserId string
+}
+
+type AddMemberToFamilyInput struct {
+	FamilyId string
+	UserId   string
+}
+
+type Family interface {
+	CreateFamily(ctx context.Context, log *slog.Logger, input FamilyCreateInput) (string, error)
+	GetFamilyByID(ctx context.Context, log *slog.Logger, id string) (entity.Family, error)
+	AddMemberToFamily(ctx context.Context, log *slog.Logger, input AddMemberToFamilyInput) error
+}
+
 type Services struct {
-	User User
-	Task Task
+	User   User
+	Task   Task
+	Email  Email
+	Family Family
 }
 
 type ServicesDependencies struct {
-	Repos *repo.Repositories
+	Rds    *redis.Redis
+	Repos  *repo.Repositories
+	Config *config.Config
 }
 
 func NewServices(dep ServicesDependencies) *Services {
 	return &Services{
-		User: NewUserService(dep.Repos.User),
-		Task: NewTaskService(dep.Repos.Task),
+		User:   NewUserService(dep.Repos.User),
+		Task:   NewTaskService(dep.Repos.Task),
+		Email:  NewEmailService(dep.Rds, dep.Config.Email),
+		Family: NewFamilyService(dep.Repos.Family, dep.Repos.User),
 	}
 }
