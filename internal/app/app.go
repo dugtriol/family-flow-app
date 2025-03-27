@@ -13,6 +13,7 @@ import (
 	"family-flow-app/internal/service"
 	"family-flow-app/pkg/httpserver"
 	"family-flow-app/pkg/postgres"
+	"family-flow-app/pkg/redis"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -30,6 +31,12 @@ func Run(configPath string) {
 	log := setLogger(cfg.Level)
 	log.Info("Init logger")
 
+	rds, err := redis.New(ctx, log, cfg.Redis.Addr, cfg.Redis.Password, cfg.Redis.DB)
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+	log.Info("Init redis")
+
 	//postgres
 	database, err := postgres.New(ctx, cfg.Conn, postgres.MaxPoolSize(cfg.MaxPoolSize))
 	if err != nil {
@@ -38,7 +45,7 @@ func Run(configPath string) {
 
 	//repositories
 	repos := repo.NewRepositories(database)
-	dependencies := service.ServicesDependencies{Repos: repos}
+	dependencies := service.ServicesDependencies{Repos: repos, Rds: rds, Config: cfg}
 
 	//services
 	services := service.NewServices(dependencies)

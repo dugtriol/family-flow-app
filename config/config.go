@@ -13,6 +13,8 @@ type (
 		HTTP     `yaml:"http"`
 		Database `yaml:"database"`
 		Log      `yaml:"log"`
+		Redis    `yaml:"redis"`
+		Email    `yaml:"email"`
 	}
 
 	HTTP struct {
@@ -29,6 +31,19 @@ type (
 
 	Log struct {
 		Level string `env-required:"true" yaml:"level" env:"LOG_LEVEL"`
+	}
+
+	Redis struct {
+		Addr     string `env-required:"true" yaml:"addr" env:"REDIS_ADDR"`
+		Password string `env-required:"true" yaml:"password" env:"REDIS_PASSWORD"`
+		DB       int    `env-required:"true" yaml:"db" env:"REDIS_DB"`
+	}
+
+	Email struct {
+		FromEmail string `env-required:"true" yaml:"from_email" env:"FROM_EMAIL"`
+		Password  string `env-required:"true" yaml:"password" env:"FROM_EMAIL_PASSWORD"`
+		SMTP      string `env-required:"true" yaml:"smtp" env:"FROM_EMAIL_SMTP"`
+		Addr      string `env-required:"true" yaml:"smtp_addr" env:"SMTP_ADDR"`
 	}
 )
 
