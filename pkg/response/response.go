@@ -18,7 +18,7 @@ type Response struct {
 func NewError(
 	w http.ResponseWriter, r *http.Request, log *slog.Logger, err error, errStatus int, message string,
 ) {
-	log.Error(message, "error", err.Error())
+	log.Error(message, "error", err)
 	w.WriteHeader(errStatus)
 	render.JSON(w, r, makeResponse(message))
 }
