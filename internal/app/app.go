@@ -54,6 +54,7 @@ func Run(configPath string) {
 	log.Info("Initializing handlers and routes...")
 
 	router := chi.NewRouter()
+
 	v1.NewRouter(ctx, log, router, services)
 	// HTTP server
 	log.Info("Starting http server...")
