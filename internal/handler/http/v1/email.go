@@ -41,6 +41,16 @@ type inputSendCode struct {
 	Email string `json:"email" validate:"required,email"`
 }
 
+// @Summary Send verification code
+// @Description Send verification code
+// @Tags email
+// @Accept json
+// @Produce json
+// @Param email body string true "Email"
+// @Success 200 {string} string "Verification code sent"
+// @Failure 400 {object} response.Response
+// @Failure 500 {object} response.Response
+// @Router /email/send [post]
 func (u *EmailRoutes) sendCode(ctx context.Context, log *slog.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var input inputSendCode
@@ -78,7 +88,17 @@ type inputCompareCode struct {
 	Code  string `json:"code" validate:"required"`
 }
 
-// compare code
+// @Summary Compare verification code
+// @Description Compare verification code
+// @Tags email
+// @Accept json
+// @Produce json
+// @Param email body string true "Email"
+// @Param code body string true "Code"
+// @Success 200 {string} string "Verification code compared"
+// @Failure 400 {object} response.Response
+// @Failure 500 {object} response.Response
+// @Router /email/compare [post]
 func (u *EmailRoutes) compareCode(ctx context.Context, log *slog.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var input inputCompareCode

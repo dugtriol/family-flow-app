@@ -28,6 +28,23 @@ func NewUserRoutes(ctx context.Context, log *slog.Logger, route chi.Router, user
 	)
 }
 
+type userResponse struct {
+	Id       string `json:"id"`
+	Name     string `json:"name"`
+	Email    string `json:"email"`
+	Role     string `json:"role"`
+	FamilyId string `json:"family_id"`
+}
+
+// @Summary Get user info
+// @Description Get user info
+// @Tags user
+// @Accept json
+// @Produce json
+// @Success 200 {object} userResponse
+// @Failure 400 {object} response.Response
+// @Failure 500 {object} response.Response
+// @Router /user [get]
 func (u *UserRoutes) get(ctx context.Context, log *slog.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		user, err := GetCurrentUserFromContext(r.Context())
@@ -36,23 +53,16 @@ func (u *UserRoutes) get(ctx context.Context, log *slog.Logger) http.HandlerFunc
 			return
 		}
 
-		type userResp struct {
-			Id       string `json:"id"`
-			Name     string `json:"name"`
-			Email    string `json:"email"`
-			Role     string `json:"role"`
-			FamilyId string `json:"family_id"`
-		}
 		w.WriteHeader(http.StatusOK)
 
 		var familyId string
 		if user.FamilyId.Valid {
 			familyId = user.FamilyId.String
 		} else {
-			familyId = "Not found"
+			familyId = ""
 		}
 		render.JSON(
-			w, r, &userResp{
+			w, r, &userResponse{
 				Id:       user.Id,
 				Name:     user.Name,
 				Email:    user.Email,
