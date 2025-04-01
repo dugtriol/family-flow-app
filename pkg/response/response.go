@@ -12,7 +12,7 @@ import (
 )
 
 type Response struct {
-	Message string `json:"errors,omitempty"`
+	Message string `json:"message,omitempty"`
 }
 
 func NewError(
