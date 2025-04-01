@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"log/slog"
-	"time"
 
 	"family-flow-app/config"
 	"family-flow-app/internal/entity"
@@ -40,65 +39,6 @@ type User interface {
 	)
 }
 
-type TaskCreateInput struct {
-	Title       string
-	Description string
-	Status      string
-	Deadline    time.Time
-	AssignedTo  string
-	CreatedBy   string
-	Reward      int
-}
-
-type TaskGetByIdInput struct {
-	Id string
-}
-
-type TaskGetByAssignedToInput struct {
-	AssignedTo string
-}
-
-type TaskGetByCreatedByInput struct {
-	CreatedBy string
-}
-
-type TaskUpdateInput struct {
-	Id          string
-	Title       string
-	Description string
-	Status      string
-	Deadline    time.Time
-	AssignedTo  string
-	Reward      int
-}
-
-type TaskDeleteInput struct {
-	Id string
-}
-
-type TaskGetByStatusInput struct {
-	Status string
-}
-
-type TaskCompleteInput struct {
-	Id     string
-	UserId string
-}
-
-type Task interface {
-	Create(ctx context.Context, log *slog.Logger, input TaskCreateInput) (string, error)
-	GetById(ctx context.Context, log *slog.Logger, input TaskGetByIdInput) (entity.Task, error)
-	GetByAssignedTo(ctx context.Context, log *slog.Logger, input TaskGetByAssignedToInput) ([]entity.Task, error)
-	GetByCreatedBy(ctx context.Context, log *slog.Logger, input TaskGetByCreatedByInput) ([]entity.Task, error)
-	GetOverdueTasks(ctx context.Context, log *slog.Logger) ([]entity.Task, error)
-	GetByStatus(ctx context.Context, log *slog.Logger, input TaskGetByStatusInput) (
-		[]entity.Task, error,
-	)
-	Update(ctx context.Context, log *slog.Logger, input TaskUpdateInput) error
-	Delete(ctx context.Context, log *slog.Logger, input TaskDeleteInput) error
-	Complete(ctx context.Context, log *slog.Logger, input TaskCompleteInput) error
-}
-
 type InputSendInvite struct {
 	To         []string
 	From       string
@@ -119,21 +59,51 @@ type FamilyCreateInput struct {
 }
 
 type AddMemberToFamilyInput struct {
-	FamilyId string
-	UserId   string
+	FamilyId  string
+	UserEmail string
 }
 
 type Family interface {
-	CreateFamily(ctx context.Context, log *slog.Logger, input FamilyCreateInput) (string, error)
-	GetFamilyByID(ctx context.Context, log *slog.Logger, id string) (entity.Family, error)
-	AddMemberToFamily(ctx context.Context, log *slog.Logger, input AddMemberToFamilyInput) error
+	Create(ctx context.Context, log *slog.Logger, input FamilyCreateInput) (string, error)
+	GetFamilyByUserID(ctx context.Context, log *slog.Logger, id string) (entity.Family, error)
+	AddMember(ctx context.Context, log *slog.Logger, input AddMemberToFamilyInput) error
+	GetByFamilyID(ctx context.Context, log *slog.Logger, familyId string) ([]entity.User, error)
+}
+
+type WishlistItem interface {
+	Create(ctx context.Context, log *slog.Logger, input WishlistCreateInput) (string, error)
+	Delete(ctx context.Context, log *slog.Logger, id string) error
+	Update(ctx context.Context, log *slog.Logger, input WishlistUpdateInput) error
+	GetByID(ctx context.Context, log *slog.Logger, id string) ([]entity.WishlistItem, error)
+}
+
+type ShoppingItem interface {
+	Create(ctx context.Context, log *slog.Logger, input ShoppingCreateInput) (string, error)
+	Delete(ctx context.Context, log *slog.Logger, id string) error
+	Update(ctx context.Context, log *slog.Logger, input ShoppingUpdateInput) error
+	GetPublicByFamilyID(
+		ctx context.Context, log *slog.Logger, familyID string,
+	) ([]entity.ShoppingItem, error)
+	GetPrivateByCreatedBy(
+		ctx context.Context, log *slog.Logger, createdBy string,
+	) ([]entity.ShoppingItem, error)
+}
+
+type TodoItem interface {
+	Create(ctx context.Context, log *slog.Logger, input TodoCreateInput) (string, error)
+	Delete(ctx context.Context, log *slog.Logger, id string) error
+	Update(ctx context.Context, log *slog.Logger, input TodoUpdateInput) error
+	GetByAssignedTo(ctx context.Context, log *slog.Logger, assignedTo string) ([]entity.TodoItem, error)
+	GetByCreatedBy(ctx context.Context, log *slog.Logger, createdBy string) ([]entity.TodoItem, error)
 }
 
 type Services struct {
-	User   User
-	Task   Task
-	Email  Email
-	Family Family
+	User         User
+	Email        Email
+	Family       Family
+	WishlistItem WishlistItem
+	ShoppingItem ShoppingItem
+	TodoItem     TodoItem
 }
 
 type ServicesDependencies struct {
@@ -144,9 +114,11 @@ type ServicesDependencies struct {
 
 func NewServices(dep ServicesDependencies) *Services {
 	return &Services{
-		User:   NewUserService(dep.Repos.User),
-		Task:   NewTaskService(dep.Repos.Task),
-		Email:  NewEmailService(dep.Rds, dep.Config.Email),
-		Family: NewFamilyService(dep.Repos.Family, dep.Repos.User),
+		User:         NewUserService(dep.Repos.User),
+		Email:        NewEmailService(dep.Rds, dep.Config.Email),
+		Family:       NewFamilyService(dep.Repos.Family, dep.Repos.User),
+		WishlistItem: NewWishlistService(dep.Repos.WishlistItem),
+		ShoppingItem: NewShoppingService(dep.Repos.ShoppingItem),
+		TodoItem:     NewTodoService(dep.Repos.TodosItem),
 	}
 }

@@ -14,6 +14,6 @@ var (
 	ErrInvalidToken       = fmt.Errorf("invalid token")
 	ErrUserGet            = fmt.Errorf("user not get from database")
 	ErrNoUserInContext    = fmt.Errorf("no user in the context")
-
-	MsgTaskNotFound = "Task not found"
+	ErrNoUserInContextMsg = "No user in the context"
+	MsgTaskNotFound       = "Task not found"
 )

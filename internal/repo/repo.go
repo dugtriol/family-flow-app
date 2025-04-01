@@ -2,6 +2,7 @@ package repo
 
 import (
 	"context"
+	"log/slog"
 
 	"family-flow-app/internal/entity"
 	"family-flow-app/internal/repo/pgdb"
@@ -17,33 +18,54 @@ type User interface {
 	Update(ctx context.Context, user entity.User) error
 }
 
-type Task interface {
-	Create(ctx context.Context, task entity.Task) (string, error)
-	GetByID(ctx context.Context, id string) (entity.Task, error)
-	GetByAssignedTo(ctx context.Context, assignedTo string) ([]entity.Task, error)
-	GetByCreatedBy(ctx context.Context, createdBy string) ([]entity.Task, error)
-	GetByStatus(ctx context.Context, status string) ([]entity.Task, error)
-	GetOverdueTasks(ctx context.Context) ([]entity.Task, error)
-	Update(ctx context.Context, task entity.Task) error
-	Delete(ctx context.Context, id string) error
-	Complete(ctx context.Context, id string, userId string) error
-}
-
 type Family interface {
 	Create(ctx context.Context, family entity.Family) (string, error)
 	GetByID(ctx context.Context, id string) (entity.Family, error)
 }
 
+type ShoppingItem interface {
+	Create(ctx context.Context, log *slog.Logger, item entity.ShoppingItem) (string, error)
+	Delete(ctx context.Context, log *slog.Logger, id string) error
+	Update(ctx context.Context, log *slog.Logger, item entity.ShoppingItem) error
+	GetPublicByFamilyID(
+		ctx context.Context, log *slog.Logger, familyID string,
+	) ([]entity.ShoppingItem, error)
+	GetPrivateByCreatedBy(
+		ctx context.Context, log *slog.Logger, createdBy string,
+	) ([]entity.ShoppingItem, error)
+}
+
+type TodosItem interface {
+	Create(ctx context.Context, log *slog.Logger, item entity.TodoItem) (string, error)
+	Delete(ctx context.Context, log *slog.Logger, id string) error
+	Update(ctx context.Context, log *slog.Logger, item entity.TodoItem) error
+	GetByAssignedTo(ctx context.Context, log *slog.Logger, assignedTo string) (
+		[]entity.TodoItem, error,
+	)
+	GetByCreatedBy(ctx context.Context, log *slog.Logger, createdBy string) ([]entity.TodoItem, error)
+}
+
+type WishlistItem interface {
+	Create(ctx context.Context, log *slog.Logger, item entity.WishlistItem) (string, error)
+	Delete(ctx context.Context, log *slog.Logger, id string) error
+	Update(ctx context.Context, log *slog.Logger, item entity.WishlistItem) error
+	GetByUserID(ctx context.Context, log *slog.Logger, userID string) ([]entity.WishlistItem, error)
+}
+
 type Repositories struct {
 	User
-	Task
 	Family
+	ShoppingItem
+	TodosItem
+	WishlistItem
 }
 
 func NewRepositories(db *postgres.Database) *Repositories {
 	return &Repositories{
-		User:   pgdb.NewUserRepo(db),
-		Task:   pgdb.NewTaskRepo(db),
-		Family: pgdb.NewFamilyRepo(db),
+		User:         pgdb.NewUserRepo(db),
+		Family:       pgdb.NewFamilyRepo(db),
+		ShoppingItem: pgdb.NewShoppingRepo(db),
+		TodosItem:    pgdb.NewTodoRepo(db),
+		WishlistItem: pgdb.NewWishlistRepo(db),
 	}
 }

@@ -8,5 +8,5 @@ type User struct {
 	Email    string         `pgdb:"email"`
 	Password string         `pgdb:"password"`
 	Role     string         `pgdb:"role"`
-	FamilyId sql.NullString `pgdb:"family_id"`
+	FamilyId sql.NullString `pgdb:"family_id" swaggerignore:"true"`
 }
