@@ -9,4 +9,7 @@ DROP TYPE IF EXISTS item_lists_status CASCADE;
 DROP TABLE IF EXISTS "item_lists";
 DROP TYPE IF EXISTS wishlist_status CASCADE;
 DROP TABLE IF EXISTS "wishlists";
+DROP TABLE IF EXISTS "diary_items";
+DROP TABLE IF EXISTS "locations";
+DROP TABLE IF EXISTS "notifications";
 COMMIT;
