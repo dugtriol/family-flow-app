@@ -60,6 +60,7 @@ func (t *TodoService) Delete(ctx context.Context, log *slog.Logger, id string) e
 }
 
 type TodoUpdateInput struct {
+	ID          string
 	Title       string
 	Description string
 	Status      string
@@ -72,6 +73,7 @@ func (t *TodoService) Update(ctx context.Context, log *slog.Logger, input TodoUp
 
 	err := t.todoRepo.Update(
 		ctx, log, entity.TodoItem{
+			ID:          input.ID,
 			Title:       input.Title,
 			Description: input.Description,
 			Status:      input.Status,

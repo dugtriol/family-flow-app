@@ -37,6 +37,10 @@ type User interface {
 	GetByEmail(ctx context.Context, log *slog.Logger, input UserGetByEmailInput) (
 		entity.User, error,
 	)
+	Update(ctx context.Context, log *slog.Logger, input UpdateUserInput) error
+	UpdatePassword(ctx context.Context, log *slog.Logger, email, password string) error
+	ResetFamilyID(ctx context.Context, log *slog.Logger, id string) error
+	ExistsByEmail(ctx context.Context, log *slog.Logger, email string) (bool, error)
 }
 
 type InputSendInvite struct {
@@ -68,6 +72,7 @@ type Family interface {
 	GetFamilyByUserID(ctx context.Context, log *slog.Logger, id string) (entity.Family, error)
 	AddMember(ctx context.Context, log *slog.Logger, input AddMemberToFamilyInput) error
 	GetByFamilyID(ctx context.Context, log *slog.Logger, familyId string) ([]entity.User, error)
+	GetByID(ctx context.Context, log *slog.Logger, id string) (entity.Family, error)
 }
 
 type WishlistItem interface {
@@ -75,6 +80,13 @@ type WishlistItem interface {
 	Delete(ctx context.Context, log *slog.Logger, id string) error
 	Update(ctx context.Context, log *slog.Logger, input WishlistUpdateInput) error
 	GetByID(ctx context.Context, log *slog.Logger, id string) ([]entity.WishlistItem, error)
+	UpdateReservedBy(ctx context.Context, log *slog.Logger, input WishlistUpdateReservedByInput) error
+	GetArchivedByUserID(
+		ctx context.Context, log *slog.Logger, userID string,
+	) ([]entity.WishlistItem, error)
+	CancelUpdateReservedBy(
+		ctx context.Context, log *slog.Logger, input WishlistCancelUpdateReservedByInput,
+	) error
 }
 
 type ShoppingItem interface {
@@ -87,6 +99,18 @@ type ShoppingItem interface {
 	GetPrivateByCreatedBy(
 		ctx context.Context, log *slog.Logger, createdBy string,
 	) ([]entity.ShoppingItem, error)
+	UpdateReservedBy(
+		ctx context.Context, log *slog.Logger, input ShoppingUpdateReservedByInput,
+	) error
+	UpdateBuyerId(
+		ctx context.Context, log *slog.Logger, input ShoppingUpdateBuyerIdInput,
+	) error
+	GetArchivedByUserID(
+		ctx context.Context, log *slog.Logger, userID string,
+	) ([]entity.ShoppingItem, error)
+	CancelUpdateReservedBy(
+		ctx context.Context, log *slog.Logger, input ShoppingCancelUpdateReservedByInput,
+	) error
 }
 
 type TodoItem interface {

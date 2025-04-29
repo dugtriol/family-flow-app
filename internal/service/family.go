@@ -92,3 +92,15 @@ func (f *FamilyService) GetByFamilyID(ctx context.Context, log *slog.Logger, fam
 
 	return users, nil
 }
+
+func (f *FamilyService) GetByID(ctx context.Context, log *slog.Logger, id string) (entity.Family, error) {
+	log.Info(fmt.Sprintf("Service - FamilyService - GetByID"))
+
+	family, err := f.familyRepo.GetByID(ctx, id)
+	if err != nil {
+		log.Error(fmt.Sprintf("Service - FamilyService - GetByID: %v", err))
+		return entity.Family{}, ErrFamilyNotFound
+	}
+
+	return family, nil
+}

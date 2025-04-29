@@ -130,3 +130,73 @@ func (u *UserService) AddMemberToFamily(ctx context.Context, log *slog.Logger, i
 
 	return nil
 }
+
+type UpdateUserInput struct {
+	ID    string
+	Name  string
+	Email string
+	Role  string
+}
+
+func (u *UserService) Update(ctx context.Context, log *slog.Logger, input UpdateUserInput) error {
+	log.Info(fmt.Sprintf("Service - UserService - Update"))
+	user := entity.User{
+		Id:    input.ID,
+		Name:  input.Name,
+		Email: input.Email,
+		Role:  input.Role,
+	}
+
+	err := u.userRepo.Update(ctx, user)
+	if err != nil {
+		log.Error(fmt.Sprintf("Service - UserService - Update: %v", err))
+		return ErrCannotUpdateUser
+	}
+	return nil
+}
+
+func (u *UserService) UpdatePassword(ctx context.Context, log *slog.Logger, email, password string) error {
+	log.Info(fmt.Sprintf("Service - UserService - UpdatePassword"))
+	//hash
+	passwordHash, err := hasher.HashPassword(password)
+	if err != nil {
+		return ErrCannotHashPassword
+	}
+
+	err = u.userRepo.UpdatePassword(ctx, email, passwordHash)
+	if err != nil {
+		log.Error(fmt.Sprintf("Service - UserService - UpdatePassword: %v", err))
+		return ErrCannotUpdateUser
+	}
+	return nil
+}
+
+func (u *UserService) ResetFamilyID(ctx context.Context, log *slog.Logger, id string) error {
+	log.Info(fmt.Sprintf("Service - UserService - ResetFamilyID"))
+
+	// Получение текущего пользователя из контекста
+	currentUser, err := u.userRepo.GetByID(ctx, id)
+	if err != nil {
+		log.Error(fmt.Sprintf("Service - UserService - ResetFamilyID - GetCurrentUser: %v", err))
+		return ErrCannotResetFamilyID
+	}
+
+	// Проверка роли пользователя
+	if currentUser.Role != "Parent" && currentUser.Id != id {
+		log.Error("Service - UserService - ResetFamilyID: insufficient permissions")
+		return ErrInsufficientPermissions
+	}
+
+	// Сброс FamilyID
+	err = u.userRepo.ResetFamilyID(ctx, id)
+	if err != nil {
+		log.Error(fmt.Sprintf("Service - UserService - ResetFamilyID: %v", err))
+		return ErrCannotResetFamilyID
+	}
+	return nil
+}
+
+func (u *UserService) ExistsByEmail(ctx context.Context, log *slog.Logger, email string) (bool, error) {
+	log.Info("Service - UserService - ExistsByEmail")
+	return u.userRepo.ExistsByEmail(ctx, email)
+}
