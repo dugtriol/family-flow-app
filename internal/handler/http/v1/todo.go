@@ -168,6 +168,7 @@ func (u *TodoRoutes) update(ctx context.Context, log *slog.Logger) http.HandlerF
 		}
 
 		id := chi.URLParam(r, "id")
+		log.Info("id: %v", id)
 		if id == "" {
 			response.NewError(w, r, log, nil, http.StatusBadRequest, MsgInvalidReq)
 			return
@@ -186,6 +187,7 @@ func (u *TodoRoutes) update(ctx context.Context, log *slog.Logger) http.HandlerF
 
 		err = u.todoService.Update(
 			ctx, log, service.TodoUpdateInput{
+				ID:          id,
 				Title:       input.Title,
 				Description: input.Description,
 				Status:      input.Status,
