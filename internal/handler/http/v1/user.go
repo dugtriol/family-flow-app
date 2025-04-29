@@ -2,6 +2,7 @@ package v1
 
 import (
 	"context"
+	`errors`
 	"log/slog"
 	"net/http"
 
@@ -9,6 +10,7 @@ import (
 	"family-flow-app/pkg/response"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
+	`github.com/go-playground/validator/v10`
 )
 
 const (
@@ -24,6 +26,8 @@ func NewUserRoutes(ctx context.Context, log *slog.Logger, route chi.Router, user
 	route.Route(
 		userString, func(r chi.Router) {
 			r.Get("/", u.get(ctx, log))
+			r.Put("/", u.update(ctx, log))
+			r.Put("/family_id", u.resetFamilyId(ctx, log))
 		},
 	)
 }
@@ -70,5 +74,128 @@ func (u *UserRoutes) get(ctx context.Context, log *slog.Logger) http.HandlerFunc
 				FamilyId: familyId,
 			},
 		)
+	}
+}
+
+type UpdateUserInput struct {
+	Name  string `json:"name"`
+	Email string `json:"email" validate:"email"`
+	Role  string `json:"role" validate:"oneof=Parent Child"`
+}
+
+// @Summary Update user info
+// @Description Update user info
+// @Tags user
+// @Accept json
+// @Produce json
+// @Param input body UpdateUserInput true "Update user info"
+// @Success 200 {object} userResponse
+// @Failure 400 {object} response.Response
+// @Failure 500 {object} response.Response
+// @Router /user [put]
+func (u *UserRoutes) update(ctx context.Context, log *slog.Logger) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		user, err := GetCurrentUserFromContext(r.Context())
+		if err != nil {
+			response.NewError(w, r, log, err, http.StatusUnauthorized, "Failed to get current user")
+			return
+		}
+
+		var input UpdateUserInput
+		if err = render.DecodeJSON(r.Body, &input); err != nil {
+			response.NewError(w, r, log, err, http.StatusBadRequest, MsgFailedParsing)
+			return
+		}
+		if err = validator.New().Struct(input); err != nil {
+			response.NewValidateError(w, r, log, http.StatusBadRequest, MsgInvalidReq, err)
+			return
+		}
+
+		err = u.userService.Update(
+			ctx, log, service.UpdateUserInput{
+				ID:    user.Id,
+				Name:  input.Name,
+				Email: input.Email,
+				Role:  input.Role,
+			},
+		)
+		if err != nil {
+			response.NewError(w, r, log, err, http.StatusInternalServerError, "Failed to update user")
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+		render.JSON(
+			w,
+			r,
+			userResponse{
+				Name:     input.Name,
+				Email:    input.Email,
+				Role:     input.Role,
+				FamilyId: user.FamilyId.String,
+			},
+		)
+	}
+}
+
+type ResetFamilyIdInput struct {
+	ID       string `json:"id"`
+	FamilyId string `json:"family_id"`
+}
+
+// @Summary Reset user family id
+// @Description Reset user family id
+// @Tags user
+// @Accept json
+// @Produce json
+// @Param input body ResetFamilyIdInput true "Reset user family id"
+// @Success 200 {object} string
+// @Failure 400 {object} response.Response
+// @Failure 500 {object} response.Response
+// @Router /user/family_id [put]
+func (u *UserRoutes) resetFamilyId(ctx context.Context, log *slog.Logger) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		_, err := GetCurrentUserFromContext(r.Context())
+		if err != nil {
+			response.NewError(w, r, log, err, http.StatusUnauthorized, "Failed to get current user")
+			return
+		}
+
+		var input ResetFamilyIdInput
+		if err = render.DecodeJSON(r.Body, &input); err != nil {
+			response.NewError(w, r, log, err, http.StatusBadRequest, MsgFailedParsing)
+			return
+		}
+		if err = validator.New().Struct(input); err != nil {
+			response.NewValidateError(w, r, log, http.StatusBadRequest, MsgInvalidReq, err)
+			return
+		}
+
+		err = u.userService.ResetFamilyID(ctx, log, input.ID)
+		if err != nil {
+			if errors.Is(err, service.ErrInsufficientPermissions) {
+				response.NewError(
+					w,
+					r,
+					log,
+					err,
+					http.StatusForbidden,
+					"Insufficient permissions to reset family ID",
+				)
+				return
+			}
+			response.NewError(
+				w,
+				r,
+				log,
+				err,
+				http.StatusInternalServerError,
+				"Failed to reset user family id",
+			)
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+		render.JSON(w, r, "Family ID reset successfully")
 	}
 }
