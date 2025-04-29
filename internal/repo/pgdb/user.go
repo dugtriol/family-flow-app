@@ -128,7 +128,7 @@ func (u *UserRepo) Update(ctx context.Context, user entity.User) error {
 	sql, args, _ := u.Builder.Update(userTable).
 		Set("name", user.Name).
 		Set("email", user.Email).
-		Set("password", user.Password).
+		//Set("password", user.Password).
 		Set("role", user.Role).
 		Where("id = ?", user.Id).
 		ToSql()
@@ -150,4 +150,50 @@ func (u *UserRepo) Delete(ctx context.Context, id string) error {
 		return fmt.Errorf("UserRepo - Delete - r.Cluster.Exec: %v", err)
 	}
 	return nil
+}
+
+// update password
+func (u *UserRepo) UpdatePassword(ctx context.Context, email, password string) error {
+	sql, args, _ := u.Builder.Update(userTable).
+		Set("password", password).
+		Where("email = ?", email).
+		ToSql()
+
+	_, err := u.Cluster.Exec(ctx, sql, args...)
+	if err != nil {
+		return fmt.Errorf("UserRepo - UpdatePassword - r.Cluster.Exec: %v", err)
+	}
+	return nil
+}
+
+// reset family id
+func (u *UserRepo) ResetFamilyID(ctx context.Context, id string) error {
+	sql, args, _ := u.Builder.Update(userTable).
+		Set("family_id", nil).
+		Where("id = ?", id).
+		ToSql()
+
+	_, err := u.Cluster.Exec(ctx, sql, args...)
+	if err != nil {
+		return fmt.Errorf("UserRepo - ResetFamilyID - r.Cluster.Exec: %v", err)
+	}
+	return nil
+}
+
+func (u *UserRepo) ExistsByEmail(ctx context.Context, email string) (bool, error) {
+	sql, args, _ := u.Builder.
+		Select("1").
+		From(userTable).
+		Where("email = ?", email).
+		Limit(1).
+		ToSql()
+
+	var exists int
+	err := u.Cluster.QueryRow(ctx, sql, args...).Scan(&exists)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, nil
+	} else if err != nil {
+		return false, fmt.Errorf("UserRepo - ExistsByEmail - r.Cluster.QueryRow: %v", err)
+	}
+	return true, nil
 }

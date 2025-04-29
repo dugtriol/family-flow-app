@@ -92,7 +92,9 @@ func (r *TodoRepo) getByField(ctx context.Context, log *slog.Logger, field, valu
 			&item.Deadline,
 			&item.AssignedTo,
 			&item.CreatedBy,
+			&item.IsArchived,
 			&item.CreatedAt,
+			&item.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}

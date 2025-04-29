@@ -3,6 +3,7 @@ package repo
 import (
 	"context"
 	"log/slog"
+	`time`
 
 	"family-flow-app/internal/entity"
 	"family-flow-app/internal/repo/pgdb"
@@ -16,6 +17,9 @@ type User interface {
 	UpdateFamilyID(ctx context.Context, userID, familyID string) error
 	GetByFamilyID(ctx context.Context, familyID string) ([]entity.User, error)
 	Update(ctx context.Context, user entity.User) error
+	UpdatePassword(ctx context.Context, email, password string) error
+	ResetFamilyID(ctx context.Context, id string) error
+	ExistsByEmail(ctx context.Context, email string) (bool, error)
 }
 
 type Family interface {
@@ -33,6 +37,18 @@ type ShoppingItem interface {
 	GetPrivateByCreatedBy(
 		ctx context.Context, log *slog.Logger, createdBy string,
 	) ([]entity.ShoppingItem, error)
+	UpdateReservedBy(
+		ctx context.Context, log *slog.Logger, id string, reservedBy string, updatedAt time.Time,
+	) error
+	UpdateBuyerId(
+		ctx context.Context, log *slog.Logger, id string, buyerId string, updatedAt time.Time,
+	) error
+	GetArchivedByUserID(
+		ctx context.Context, log *slog.Logger, userID string,
+	) ([]entity.ShoppingItem, error)
+	CancelUpdateReservedBy(
+		ctx context.Context, log *slog.Logger, id string, updatedAt time.Time,
+	) error
 }
 
 type TodosItem interface {
@@ -50,6 +66,11 @@ type WishlistItem interface {
 	Delete(ctx context.Context, log *slog.Logger, id string) error
 	Update(ctx context.Context, log *slog.Logger, item entity.WishlistItem) error
 	GetByUserID(ctx context.Context, log *slog.Logger, userID string) ([]entity.WishlistItem, error)
+	UpdateReservedBy(ctx context.Context, log *slog.Logger, id, reservedBy string) error
+	GetArchivedByUserID(ctx context.Context, log *slog.Logger, userID string) (
+		[]entity.WishlistItem, error,
+	)
+	CancelUpdateReservedBy(ctx context.Context, log *slog.Logger, id string) error
 }
 
 type Repositories struct {

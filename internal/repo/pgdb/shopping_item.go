@@ -2,7 +2,9 @@ package pgdb
 
 import (
 	"context"
+	`fmt`
 	"log/slog"
+	`time`
 
 	"family-flow-app/internal/entity"
 	"family-flow-app/pkg/postgres"
@@ -53,6 +55,8 @@ func (r *ShoppingRepo) Delete(ctx context.Context, log *slog.Logger, id string) 
 
 func (r *ShoppingRepo) Update(ctx context.Context, log *slog.Logger, item entity.ShoppingItem) error {
 	log.Info("ShoppingRepo - Update")
+
+	log.Info(fmt.Sprintf("ShoppingRepo - Update - IsArchived - %s", item.IsArchived))
 	sql, args, _ := r.Builder.Update(shoppingTable).Set(
 		"title", item.Title,
 	).Set(
@@ -61,7 +65,9 @@ func (r *ShoppingRepo) Update(ctx context.Context, log *slog.Logger, item entity
 		"status", item.Status,
 	).Set(
 		"visibility", item.Visibility,
-	).Where("id = ?", item.ID).ToSql()
+	).Set("is_archived", item.IsArchived).
+		Set("updated_at", item.UpdatedAt).
+		Where("id = ?", item.ID).ToSql()
 
 	_, err := r.Cluster.Exec(ctx, sql, args...)
 	return err
@@ -73,15 +79,8 @@ func (r *ShoppingRepo) GetPublicByFamilyID(
 ) ([]entity.ShoppingItem, error) {
 	log.Info("ShoppingRepo - GetPublicByFamilyID")
 	sql, args, _ := r.Builder.Select(
-		"id",
-		"family_id",
-		"title",
-		"description",
-		"status",
-		"visibility",
-		"created_by",
-		"created_at",
-	).From(shoppingTable).Where("family_id = ? AND visibility = 'Public'", familyID).ToSql()
+		"*",
+	).From(shoppingTable).Where("family_id = ? AND visibility = 'Public' AND is_archived = false", familyID).ToSql()
 
 	rows, err := r.Cluster.Query(ctx, sql, args...)
 	if err != nil {
@@ -100,7 +99,11 @@ func (r *ShoppingRepo) GetPublicByFamilyID(
 			&item.Status,
 			&item.Visibility,
 			&item.CreatedBy,
+			&item.ReservedBy,
+			&item.BuyerId,
+			&item.IsArchived,
 			&item.CreatedAt,
+			&item.UpdatedAt,
 		)
 		if err != nil {
 			return nil, err
@@ -111,16 +114,13 @@ func (r *ShoppingRepo) GetPublicByFamilyID(
 	return items, nil
 }
 
-type InputGetPrivateByCreatedBy struct {
-}
-
 // получить списки visibility - private created_by
 func (r *ShoppingRepo) GetPrivateByCreatedBy(
 	ctx context.Context, log *slog.Logger, CreatedBy string,
 ) ([]entity.ShoppingItem, error) {
 	log.Info("ShoppingRepo - GetPrivateByCreatedBy")
 	sql, args, _ := r.Builder.Select("*").From(shoppingTable).Where(
-		"created_by = ? AND visibility = 'Private'",
+		"created_by = ? AND visibility = 'Private' AND is_archived = false",
 		CreatedBy,
 	).ToSql()
 
@@ -141,7 +141,93 @@ func (r *ShoppingRepo) GetPrivateByCreatedBy(
 			&item.Status,
 			&item.Visibility,
 			&item.CreatedBy,
+			&item.ReservedBy,
+			&item.BuyerId,
+			&item.IsArchived,
 			&item.CreatedAt,
+			&item.UpdatedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+		items = append(items, item)
+	}
+	return items, nil
+}
+
+// update reserved_by
+func (r *ShoppingRepo) UpdateReservedBy(
+	ctx context.Context, log *slog.Logger, id string, reservedBy string, updatedAt time.Time,
+) error {
+	log.Info("ShoppingRepo - UpdateReservedBy")
+	sql, args, _ := r.Builder.Update(shoppingTable).Set(
+		"reserved_by", reservedBy,
+	).Set("status", "Reserved").Set("updated_at", updatedAt).Where("id = ?", id).ToSql()
+
+	_, err := r.Cluster.Exec(ctx, sql, args...)
+	return err
+}
+
+// update reserved_by
+func (r *ShoppingRepo) CancelUpdateReservedBy(
+	ctx context.Context, log *slog.Logger, id string, updatedAt time.Time,
+) error {
+	log.Info("ShoppingRepo - UpdateReservedBy")
+	sql, args, _ := r.Builder.Update(shoppingTable).Set(
+		"reserved_by", nil,
+	).Set("status", "Active").Set("updated_at", updatedAt).Where("id = ?", id).ToSql()
+
+	_, err := r.Cluster.Exec(ctx, sql, args...)
+	return err
+}
+
+// update buyer_id
+func (r *ShoppingRepo) UpdateBuyerId(
+	ctx context.Context, log *slog.Logger, id string, buyerId string, updatedAt time.Time,
+) error {
+	log.Info("ShoppingRepo - UpdateBuyerId")
+	sql, args, _ := r.Builder.Update(shoppingTable).Set(
+		"buyer_id", buyerId,
+	).Set("status", "Completed").
+		Set("updated_at", updatedAt).
+		Where("id = ?", id).ToSql()
+
+	_, err := r.Cluster.Exec(ctx, sql, args...)
+	return err
+}
+
+// get archived items by user id
+func (r *ShoppingRepo) GetArchivedByUserID(
+	ctx context.Context, log *slog.Logger, userID string,
+) ([]entity.ShoppingItem, error) {
+	log.Info("ShoppingRepo - GetArchivedByUserID")
+	sql, args, _ := r.Builder.Select("*").From(shoppingTable).Where(
+		"created_by = ? AND is_archived = true",
+		userID,
+	).ToSql()
+
+	rows, err := r.Cluster.Query(ctx, sql, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var items []entity.ShoppingItem
+	for rows.Next() {
+		var item entity.ShoppingItem
+		err = rows.Scan(
+			&item.ID,
+			&item.FamilyID,
+			&item.Title,
+			&item.Description,
+			&item.Status,
+			&item.Visibility,
+			&item.CreatedBy,
+			&item.ReservedBy,
+			&item.BuyerId,
+			&item.IsArchived,
+			&item.CreatedAt,
+			&item.UpdatedAt,
 		)
 		if err != nil {
 			return nil, err
