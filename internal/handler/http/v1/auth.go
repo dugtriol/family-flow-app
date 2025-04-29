@@ -29,6 +29,8 @@ func NewAuthRoutes(ctx context.Context, log *slog.Logger, route chi.Router, user
 		authString, func(r chi.Router) {
 			r.Post("/register", u.create(ctx, log))
 			r.Post("/login", u.login(ctx, log))
+			r.Get("/exists", u.existsByEmail(ctx, log))
+			r.Put("/password", u.updatePassword(ctx, log))
 		},
 	)
 }
@@ -143,5 +145,82 @@ func (u *AuthRoutes) login(ctx context.Context, log *slog.Logger) http.HandlerFu
 
 		w.WriteHeader(http.StatusOK)
 		render.JSON(w, r, tokenResponse{Token: tokenString})
+	}
+}
+
+// @Summary Check if user exists by email
+// @Description Check if user exists by email
+// @Tags user
+// @Accept json
+// @Produce json
+// @Param email query string true "Email"
+// @Success 200 {object} map[string]bool
+// @Failure 400 {object} response.Response
+// @Failure 500 {object} response.Response
+// @Router /auth/exists [get]
+func (u *AuthRoutes) existsByEmail(ctx context.Context, log *slog.Logger) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		email := r.URL.Query().Get("email")
+		if email == "" {
+			response.NewError(w, r, log, nil, http.StatusBadRequest, "Email is required")
+			return
+		}
+
+		exists, err := u.userService.ExistsByEmail(ctx, log, email)
+		if err != nil {
+			response.NewError(w, r, log, err, http.StatusInternalServerError, "Failed to check user existence")
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+		render.JSON(w, r, map[string]bool{"exists": exists})
+	}
+}
+
+type UpdatePasswordInput struct {
+	Email    string `json:"email" validate:"required,email"`
+	Password string `json:"password" validate:"required"`
+}
+
+// @Summary Update user password
+// @Description Update user password
+// @Tags user
+// @Accept json
+// @Produce json
+// @Param input body UpdatePasswordInput true "Update user password"
+// @Success 200 {object} string
+// @Failure 400 {object} response.Response
+// @Failure 500 {object} response.Response
+// @Router /auth/password [put]
+func (u *AuthRoutes) updatePassword(ctx context.Context, log *slog.Logger) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var err error
+		//user, err := GetCurrentUserFromContext(r.Context())
+		//if err != nil {
+		//	response.NewError(w, r, log, err, http.StatusUnauthorized, "Failed to get current user")
+		//	return
+		//}
+
+		var input UpdatePasswordInput
+		if err = render.DecodeJSON(r.Body, &input); err != nil {
+			response.NewError(w, r, log, err, http.StatusBadRequest, MsgFailedParsing)
+			return
+		}
+		if err = validator.New().Struct(input); err != nil {
+			response.NewValidateError(w, r, log, http.StatusBadRequest, MsgInvalidReq, err)
+			return
+		}
+
+		err = u.userService.UpdatePassword(ctx, log, input.Email, input.Password)
+		if err != nil {
+			response.NewError(
+				w, r, log, err, http.StatusInternalServerError,
+				"Failed to update user password",
+			)
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+		render.JSON(w, r, "Password updated successfully")
 	}
 }
