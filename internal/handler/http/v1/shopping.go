@@ -31,6 +31,10 @@ func NewShoppingRoutes(
 			r.Delete("/{id}", u.delete(ctx, log))
 			r.Get("/public", u.getPublicByFamilyID(ctx, log))
 			r.Get("/private", u.getPrivateByCreatedBy(ctx, log))
+			r.Put("/reserved/{id}", u.updateReservedBy(ctx, log))
+			r.Put("/buyer/{id}", u.updateBuyerId(ctx, log))
+			r.Get("/archived", u.getArchivedByUserID(ctx, log))
+			r.Put("/cancel_reserved/{id}", u.cancelUpdateReservedBy(ctx, log))
 		},
 	)
 }
@@ -38,7 +42,7 @@ func NewShoppingRoutes(
 type inputShoppingCreate struct {
 	FamilyId    string `json:"family_id" validate:"required"`
 	Title       string `json:"title" validate:"required"`
-	Description string `json:"description" validate:"required"`
+	Description string `json:"description"`
 	Visibility  string `json:"visibility" validate:"required"`
 }
 
@@ -133,10 +137,11 @@ func (u *ShoppingRoutes) delete(ctx context.Context, log *slog.Logger) http.Hand
 }
 
 type inputShoppingUpdate struct {
-	Title       string `json:"title" validate:"required"`
-	Description string `json:"description" validate:"required"`
-	Status      string `json:"status" validate:"required"`
-	Visibility  string `json:"visibility" validate:"required"`
+	Title       string `json:"title"`
+	Description string `json:"description"`
+	Status      string `json:"status"`
+	Visibility  string `json:"visibility"`
+	IsArchived  bool   `json:"is_archived"`
 }
 
 // @Summary Update shopping item
@@ -173,17 +178,29 @@ func (u *ShoppingRoutes) update(ctx context.Context, log *slog.Logger) http.Hand
 			response.NewError(w, r, log, err, http.StatusBadRequest, "Failed to parse request")
 			return
 		}
+
 		if err = validator.New().Struct(input); err != nil {
 			response.NewValidateError(w, r, log, http.StatusBadRequest, "Invalid request", err)
 			return
 		}
 
+		log.Info(
+			"ShoppingRoutes - Update - Input fields",
+			"Title", input.Title,
+			"Description", input.Description,
+			"Status", input.Status,
+			"Visibility", input.Visibility,
+			"IsArchived", input.IsArchived,
+		)
+
 		err = u.shoppingService.Update(
 			ctx, log, service.ShoppingUpdateInput{
+				ID:          id,
 				Title:       input.Title,
 				Description: input.Description,
 				Status:      input.Status,
 				Visibility:  input.Visibility,
+				IsArchived:  input.IsArchived,
 			},
 		)
 		if err != nil {
@@ -255,5 +272,154 @@ func (u *ShoppingRoutes) getPrivateByCreatedBy(ctx context.Context, log *slog.Lo
 
 		w.WriteHeader(http.StatusOK)
 		render.JSON(w, r, items)
+	}
+}
+
+// @Summary Update reserved by
+// @Description Update reserved by
+// @Tags shopping
+// @Accept json
+// @Produce json
+// @Param id path string true "ID"
+// @Param reserved_by body string true "Reserved by"
+// @Success 200 {string} string "Shopping item updated"
+// @Failure 400 {object} response.Response
+// @Failure 500 {object} response.Response
+// @Router /shopping/reserved/{id} [put]
+func (u *ShoppingRoutes) updateReservedBy(ctx context.Context, log *slog.Logger) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		user, err := GetCurrentUserFromContext(r.Context())
+		if err != nil {
+			response.NewError(w, r, log, err, http.StatusUnauthorized, ErrNoUserInContextMsg)
+			return
+		}
+
+		id := chi.URLParam(r, "id")
+		if id == "" {
+			response.NewError(w, r, log, nil, http.StatusBadRequest, "Invalid request")
+			return
+		}
+
+		err = u.shoppingService.UpdateReservedBy(
+			ctx, log, service.ShoppingUpdateReservedByInput{
+				Id:         id,
+				ReservedBy: user.Id,
+			},
+		)
+		if err != nil {
+			response.NewError(w, r, log, err, http.StatusInternalServerError, "Failed to update reserved by")
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+		render.JSON(w, r, "Shopping item updated")
+	}
+}
+
+// @Summary Update buyer ID
+// @Description Update buyer ID
+// @Tags shopping
+// @Accept json
+// @Produce json
+// @Param id path string true "ID"
+// @Param buyer_id body string true "Buyer ID"
+// @Success 200 {string} string "Shopping item updated"
+// @Failure 400 {object} response.Response
+// @Failure 500 {object} response.Response
+// @Router /shopping/buyer/{id} [put]
+func (u *ShoppingRoutes) updateBuyerId(ctx context.Context, log *slog.Logger) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		user, err := GetCurrentUserFromContext(r.Context())
+		if err != nil {
+			response.NewError(w, r, log, err, http.StatusUnauthorized, ErrNoUserInContextMsg)
+			return
+		}
+
+		id := chi.URLParam(r, "id")
+		if id == "" {
+			response.NewError(w, r, log, nil, http.StatusBadRequest, "Invalid request")
+			return
+		}
+
+		err = u.shoppingService.UpdateBuyerId(
+			ctx, log, service.ShoppingUpdateBuyerIdInput{
+				Id:      id,
+				BuyerId: user.Id,
+			},
+		)
+		if err != nil {
+			response.NewError(w, r, log, err, http.StatusInternalServerError, "Failed to update buyer ID")
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+		render.JSON(w, r, "Shopping item updated")
+	}
+}
+
+// @Summary Get archived shopping items by user ID
+// @Description Get archived shopping items by user ID
+// @Tags shopping
+// @Accept json
+// @Produce json
+// @Success 200 {object} []entity.ShoppingItem
+// @Failure 400 {object} response.Response
+// @Failure 500 {object} response.Response
+// @Router /shopping/archived [get]
+func (u *ShoppingRoutes) getArchivedByUserID(ctx context.Context, log *slog.Logger) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		user, err := GetCurrentUserFromContext(r.Context())
+		if err != nil {
+			response.NewError(w, r, log, err, http.StatusUnauthorized, ErrNoUserInContextMsg)
+			return
+		}
+
+		items, err := u.shoppingService.GetArchivedByUserID(ctx, log, user.Id)
+		if err != nil {
+			response.NewError(w, r, log, err, http.StatusInternalServerError, "Failed to get archived shopping items")
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+		render.JSON(w, r, items)
+	}
+}
+
+// @Summary Cancel update reserved by
+// @Description Cancel update reserved by
+// @Tags shopping
+// @Accept json
+// @Produce json
+// @Param id path string true "ID"
+// @Success 200 {string} string "Shopping item updated"
+// @Failure 400 {object} response.Response
+// @Failure 500 {object} response.Response
+// @Router /shopping/cancel_reserved/{id} [put]
+func (u *ShoppingRoutes) cancelUpdateReservedBy(ctx context.Context, log *slog.Logger) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		_, err := GetCurrentUserFromContext(r.Context())
+		if err != nil {
+			response.NewError(w, r, log, err, http.StatusUnauthorized, ErrNoUserInContextMsg)
+			return
+		}
+
+		id := chi.URLParam(r, "id")
+		if id == "" {
+			response.NewError(w, r, log, nil, http.StatusBadRequest, "Invalid request")
+			return
+		}
+
+		err = u.shoppingService.CancelUpdateReservedBy(
+			ctx, log, service.ShoppingCancelUpdateReservedByInput{
+				Id: id,
+			},
+		)
+		if err != nil {
+			response.NewError(w, r, log, err, http.StatusInternalServerError, "Failed to cancel update reserved by")
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+		render.JSON(w, r, "Shopping item updated")
 	}
 }
