@@ -33,6 +33,7 @@ func NewFamilyRoutes(
 			r.Post("/add", u.addMember(ctx, log))
 			r.Post("/", u.create(ctx, log))
 			r.Post("/members", u.getMembers(ctx, log))
+			r.Get("/{familyId}", u.getByFamilyId(ctx, log))
 		},
 	)
 }
@@ -182,6 +183,12 @@ func (u *FamilyRoutes) getMembers(ctx context.Context, log *slog.Logger) http.Ha
 		var input inputGetMembers
 		var err error
 
+		_, err = GetCurrentUserFromContext(r.Context())
+		if err != nil {
+			response.NewError(w, r, log, err, http.StatusUnauthorized, "Failed to get current user")
+			return
+		}
+
 		if err = render.DecodeJSON(r.Body, &input); err != nil {
 			response.NewError(w, r, log, err, http.StatusBadRequest, MsgFailedParsing)
 			return
@@ -217,4 +224,45 @@ func formatUsers(users []entity.User) []map[string]interface{} {
 		}
 	}
 	return formattedUsers
+}
+
+// @Summary Get family by ID
+// @Description Get family by ID
+// @Tags family
+// @Accept json
+// @Produce json
+// @Param familyId body string true "Family ID"
+// @Success 200 {object} entity.Family
+// @Failure 400 {object} response.Response
+// @Failure 500 {object} response.Response
+// @Router /family/{familyId} [get]
+func (u *FamilyRoutes) getByFamilyId(ctx context.Context, log *slog.Logger) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var err error
+
+		_, err = GetCurrentUserFromContext(r.Context())
+		if err != nil {
+			response.NewError(w, r, log, err, http.StatusUnauthorized, "Failed to get current user")
+			return
+		}
+
+		familyId := chi.URLParam(r, "familyId")
+		if familyId == "" {
+			response.NewError(w, r, log, errors.New("missing familyId"), http.StatusBadRequest, "Missing familyId")
+			return
+		}
+		if err = validator.New().Var(familyId, "required,uuid"); err != nil {
+			response.NewValidateError(w, r, log, http.StatusBadRequest, MsgInvalidReq, err)
+			return
+		}
+
+		var family entity.Family
+		if family, err = u.familyService.GetByID(ctx, log, familyId); err != nil {
+			response.NewError(w, r, log, err, http.StatusInternalServerError, "Failed to get family members")
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+		render.JSON(w, r, family)
+	}
 }
