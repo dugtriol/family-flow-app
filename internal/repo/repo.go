@@ -73,12 +73,18 @@ type WishlistItem interface {
 	CancelUpdateReservedBy(ctx context.Context, log *slog.Logger, id string) error
 }
 
+type Notification interface {
+	Create(ctx context.Context, notification entity.Notification) (string, error)
+	GetByUserID(ctx context.Context, userID string) ([]entity.Notification, error)
+}
+
 type Repositories struct {
 	User
 	Family
 	ShoppingItem
 	TodosItem
 	WishlistItem
+	Notification
 }
 
 func NewRepositories(db *postgres.Database) *Repositories {
@@ -88,5 +94,6 @@ func NewRepositories(db *postgres.Database) *Repositories {
 		ShoppingItem: pgdb.NewShoppingRepo(db),
 		TodosItem:    pgdb.NewTodoRepo(db),
 		WishlistItem: pgdb.NewWishlistRepo(db),
+		Notification: pgdb.NewNotificationsRepo(db),
 	}
 }
