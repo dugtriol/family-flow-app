@@ -8,6 +8,7 @@ import (
 	"family-flow-app/internal/entity"
 	"family-flow-app/internal/repo"
 	"family-flow-app/pkg/redis"
+	firebase `firebase.google.com/go/v4`
 )
 
 type UserCreateInput struct {
@@ -121,6 +122,14 @@ type TodoItem interface {
 	GetByCreatedBy(ctx context.Context, log *slog.Logger, createdBy string) ([]entity.TodoItem, error)
 }
 
+type Notification interface {
+	SendNotification(ctx context.Context, log *slog.Logger, input NotificationCreateInput) error
+	SaveToken(ctx context.Context, userID, token string) error
+	GetNotificationsByUserID(
+		ctx context.Context, log *slog.Logger, userID string,
+	) ([]entity.Notification, error)
+}
+
 type Services struct {
 	User         User
 	Email        Email
@@ -128,15 +137,17 @@ type Services struct {
 	WishlistItem WishlistItem
 	ShoppingItem ShoppingItem
 	TodoItem     TodoItem
+	Notification Notification
 }
 
 type ServicesDependencies struct {
 	Rds    *redis.Redis
 	Repos  *repo.Repositories
 	Config *config.Config
+	App    *firebase.App
 }
 
-func NewServices(dep ServicesDependencies) *Services {
+func NewServices(ctx context.Context, dep ServicesDependencies) *Services {
 	return &Services{
 		User:         NewUserService(dep.Repos.User),
 		Email:        NewEmailService(dep.Rds, dep.Config.Email),
@@ -144,5 +155,6 @@ func NewServices(dep ServicesDependencies) *Services {
 		WishlistItem: NewWishlistService(dep.Repos.WishlistItem),
 		ShoppingItem: NewShoppingService(dep.Repos.ShoppingItem),
 		TodoItem:     NewTodoService(dep.Repos.TodosItem),
+		Notification: NewNotificationService(ctx, dep.Rds, dep.App, dep.Repos.Notification),
 	}
 }
