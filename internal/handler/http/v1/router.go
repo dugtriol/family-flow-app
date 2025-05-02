@@ -45,6 +45,7 @@ func NewRouter(ctx context.Context, log *slog.Logger, route *chi.Mux, services *
 					NewTodoRoutes(ctx, log, g, services.TodoItem)
 					NewShoppingRoutes(ctx, log, g, services.ShoppingItem)
 					NewWishlistRoutes(ctx, log, g, services.WishlistItem)
+					NewNotificationRoutes(ctx, log, g, services.Notification)
 				},
 			)
 		},
