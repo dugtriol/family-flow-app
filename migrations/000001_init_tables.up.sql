@@ -121,11 +121,11 @@ CREATE TABLE IF NOT EXISTS "notifications"
 (
     id         UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id    UUID REFERENCES users (id) ON DELETE CASCADE,
-    type       VARCHAR(255),
-    message    TEXT,
+    title      TEXT,
+    body       TEXT,
+    data       TEXT,
     is_read    BOOLEAN          DEFAULT FALSE,
-    created_at TIMESTAMP        DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP        DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP        DEFAULT CURRENT_TIMESTAMP
 );
 
 -- общие эвенты, несколько пользователей таблица пользователь - id эвента
