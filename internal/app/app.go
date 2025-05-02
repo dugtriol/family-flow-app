@@ -11,6 +11,7 @@ import (
 	v1 "family-flow-app/internal/handler/http/v1"
 	"family-flow-app/internal/repo"
 	"family-flow-app/internal/service"
+	`family-flow-app/pkg/firebase`
 	"family-flow-app/pkg/httpserver"
 	"family-flow-app/pkg/postgres"
 	"family-flow-app/pkg/redis"
@@ -45,10 +46,11 @@ func Run(configPath string) {
 
 	//repositories
 	repos := repo.NewRepositories(database)
-	dependencies := service.ServicesDependencies{Repos: repos, Rds: rds, Config: cfg}
+	ntf := firebase.Init(ctx)
+	dependencies := service.ServicesDependencies{Repos: repos, Rds: rds, Config: cfg, App: ntf}
 
 	//services
-	services := service.NewServices(dependencies)
+	services := service.NewServices(ctx, dependencies)
 
 	//handlers
 	log.Info("Initializing handlers and routes...")
