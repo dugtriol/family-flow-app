@@ -8,7 +8,7 @@ import (
 	"family-flow-app/internal/entity"
 	"family-flow-app/internal/repo"
 	"family-flow-app/pkg/redis"
-	firebase `firebase.google.com/go/v4`
+	firebase "firebase.google.com/go/v4"
 )
 
 type UserCreateInput struct {
@@ -66,6 +66,7 @@ type FamilyCreateInput struct {
 type AddMemberToFamilyInput struct {
 	FamilyId  string
 	UserEmail string
+	Role      string
 }
 
 type Family interface {
@@ -130,6 +131,17 @@ type Notification interface {
 	) ([]entity.Notification, error)
 }
 
+type Chats interface {
+	CreateChat(ctx context.Context, log *slog.Logger, input CreateChatInput) (string, error)
+	AddParticipant(ctx context.Context, log *slog.Logger, input AddParticipantInput) error
+	CreateChatWithParticipants(ctx context.Context, log *slog.Logger, input CreateChatWithParticipantsInput) (
+		string, error,
+	)
+	CreateMessage(ctx context.Context, log *slog.Logger, input CreateMessageInput) (string, error)
+	GetParticipants(ctx context.Context, log *slog.Logger, chatID string) ([]string, error)
+	GetMessagesByChatID(ctx context.Context, log *slog.Logger, chatID string) ([]entity.Message, error)
+}
+
 type Services struct {
 	User         User
 	Email        Email
@@ -138,6 +150,7 @@ type Services struct {
 	ShoppingItem ShoppingItem
 	TodoItem     TodoItem
 	Notification Notification
+	Chats        Chats
 }
 
 type ServicesDependencies struct {
@@ -156,5 +169,6 @@ func NewServices(ctx context.Context, dep ServicesDependencies) *Services {
 		ShoppingItem: NewShoppingService(dep.Repos.ShoppingItem),
 		TodoItem:     NewTodoService(dep.Repos.TodosItem),
 		Notification: NewNotificationService(ctx, dep.Rds, dep.App, dep.Repos.Notification),
+		Chats:        NewChatMessageService(dep.Repos.Chat, dep.Repos.Message),
 	}
 }
