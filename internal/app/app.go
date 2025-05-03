@@ -11,7 +11,7 @@ import (
 	v1 "family-flow-app/internal/handler/http/v1"
 	"family-flow-app/internal/repo"
 	"family-flow-app/internal/service"
-	`family-flow-app/pkg/firebase`
+	"family-flow-app/pkg/firebase"
 	"family-flow-app/pkg/httpserver"
 	"family-flow-app/pkg/postgres"
 	"family-flow-app/pkg/redis"

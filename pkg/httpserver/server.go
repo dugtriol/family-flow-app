@@ -21,7 +21,8 @@ type Server struct {
 
 func New(handler http.Handler, opts ...Option) *Server {
 	httpServer := &http.Server{
-		Handler:      http.TimeoutHandler(handler, 5*time.Second, "long time request"),
+		// Handler:      http.TimeoutHandler(handler, 5*time.Second, "long time request"),
+		Handler:      handler,
 		ReadTimeout:  defaultReadTimeout,
 		WriteTimeout: defaultWriteTimeout,
 		Addr:         defaultAddr,
