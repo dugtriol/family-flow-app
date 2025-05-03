@@ -20,6 +20,7 @@ type User interface {
 	UpdatePassword(ctx context.Context, email, password string) error
 	ResetFamilyID(ctx context.Context, id string) error
 	ExistsByEmail(ctx context.Context, email string) (bool, error)
+	UpdateRole(ctx context.Context, email, role string) error
 }
 
 type Family interface {
@@ -78,6 +79,19 @@ type Notification interface {
 	GetByUserID(ctx context.Context, userID string) ([]entity.Notification, error)
 }
 
+type Chat interface {
+	Create(ctx context.Context, chat entity.Chat) (string, error)
+	GetByID(ctx context.Context, id string) (entity.Chat, error)
+	GetAll(ctx context.Context) ([]entity.Chat, error)
+	AddParticipant(ctx context.Context, chatID, userID string) error
+	GetParticipants(ctx context.Context, chatID string) ([]string, error)
+}
+
+type Message interface {
+	Create(ctx context.Context, message entity.Message) (string, error)
+	GetByChatID(ctx context.Context, chatID string) ([]entity.Message, error)
+}
+
 type Repositories struct {
 	User
 	Family
@@ -85,6 +99,8 @@ type Repositories struct {
 	TodosItem
 	WishlistItem
 	Notification
+	Chat
+	Message
 }
 
 func NewRepositories(db *postgres.Database) *Repositories {
@@ -95,5 +111,7 @@ func NewRepositories(db *postgres.Database) *Repositories {
 		TodosItem:    pgdb.NewTodoRepo(db),
 		WishlistItem: pgdb.NewWishlistRepo(db),
 		Notification: pgdb.NewNotificationsRepo(db),
+		Chat:         pgdb.NewChatsRepo(db),
+		Message:      pgdb.NewMessagesRepo(db),
 	}
 }
