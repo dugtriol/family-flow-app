@@ -34,6 +34,7 @@ func NewFamilyRoutes(
 			r.Post("/", u.create(ctx, log))
 			r.Post("/members", u.getMembers(ctx, log))
 			r.Get("/{familyId}", u.getByFamilyId(ctx, log))
+			r.Post("/invite", u.inviteMember(ctx, log))
 		},
 	)
 }
@@ -93,6 +94,7 @@ func (u *FamilyRoutes) create(ctx context.Context, log *slog.Logger) http.Handle
 type inputAddMemberToFamily struct {
 	EmailUser string `json:"email_user" validate:"required,email"`
 	FamilyId  string `json:"family_id" validate:"required,uuid"`
+	Role      string `json:"role" validate:"required"`
 }
 
 // @Summary Add member to family
@@ -130,6 +132,7 @@ func (u *FamilyRoutes) addMember(ctx context.Context, log *slog.Logger) http.Han
 			ctx, log, service.AddMemberToFamilyInput{
 				FamilyId:  input.FamilyId,
 				UserEmail: input.EmailUser,
+				Role:      input.Role,
 			},
 		)
 
@@ -264,5 +267,60 @@ func (u *FamilyRoutes) getByFamilyId(ctx context.Context, log *slog.Logger) http
 
 		w.WriteHeader(http.StatusOK)
 		render.JSON(w, r, family)
+	}
+}
+
+// @Summary Invite member to family
+// @Description Invite member to family
+// @Tags family
+// @Accept json
+// @Produce json
+// @Param email_user body string true "Email user"
+// @Param family_id body string true "Family ID"
+// @Success 200 {string} string "Member added to family"
+// @Failure 400 {object} response.Response
+// @Failure 500 {object} response.Response
+// @Router /family/invite [post]
+func (u *FamilyRoutes) inviteMember(ctx context.Context, log *slog.Logger) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var input inputAddMemberToFamily
+		var err error
+
+		user, err := GetCurrentUserFromContext(r.Context())
+		if err != nil {
+			response.NewError(w, r, log, err, http.StatusUnauthorized, "Failed to get current user")
+			return
+		}
+
+		if err = render.DecodeJSON(r.Body, &input); err != nil {
+			response.NewError(w, r, log, err, http.StatusBadRequest, MsgFailedParsing)
+			return
+		}
+		if err = validator.New().Struct(input); err != nil {
+			response.NewValidateError(w, r, log, http.StatusBadRequest, MsgInvalidReq, err)
+			return
+		}
+
+		var family entity.Family
+
+		if family, err = u.familyService.GetFamilyByUserID(ctx, log, input.FamilyId); err != nil {
+			response.NewError(w, r, log, err, http.StatusNotFound, "Family not found")
+			return
+		}
+		if err = u.emailService.SendInvite(
+			ctx, service.InputSendInvite{
+				To:         []string{input.EmailUser},
+				From:       user.Email,
+				FromName:   user.Name,
+				FamilyName: family.Name,
+			},
+		); err != nil {
+			response.NewError(w, r, log, err, http.StatusInternalServerError, "Failed to send invite")
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		render.JSON(w, r, "Invite sent")
+		return
+
 	}
 }
