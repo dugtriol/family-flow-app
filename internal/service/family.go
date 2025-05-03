@@ -61,6 +61,12 @@ func (f *FamilyService) AddMember(ctx context.Context, log *slog.Logger, input A
 		return ErrUserNotFound
 	}
 
+	err = f.userRepo.UpdateRole(ctx, input.UserEmail, input.Role)
+	if err != nil {
+		log.Error(fmt.Sprintf("Service - UserService - AddMember: %v", err))
+		return ErrCannotUpdateUser
+	}
+
 	if err = f.userRepo.UpdateFamilyID(ctx, user.Id, input.FamilyId); err != nil {
 		log.Error(fmt.Sprintf("Service - FamilyService - AddMember: %v", err))
 		return ErrCannotAddMemberToFamily
