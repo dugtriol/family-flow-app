@@ -7,6 +7,7 @@ import (
 
 	_ "family-flow-app/docs"
 	"family-flow-app/internal/service"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/render"
@@ -24,6 +25,14 @@ func NewRouter(ctx context.Context, log *slog.Logger, route *chi.Mux, services *
 	route.Use(middleware.URLFormat)
 	route.Use(mwLogger.New(log))
 	route.Use(render.SetContentType(render.ContentTypeJSON))
+
+	route.Group(
+		func(r chi.Router) {
+			r.HandleFunc(
+				"/ws", WebSocketHandler(ctx, log, services.Chats),
+			)
+		},
+	)
 
 	log.Info("Swagger is available")
 	route.Get(
@@ -46,6 +55,7 @@ func NewRouter(ctx context.Context, log *slog.Logger, route *chi.Mux, services *
 					NewShoppingRoutes(ctx, log, g, services.ShoppingItem)
 					NewWishlistRoutes(ctx, log, g, services.WishlistItem)
 					NewNotificationRoutes(ctx, log, g, services.Notification)
+					NewChatsRoutes(ctx, log, g, services.Chats)
 				},
 			)
 		},
