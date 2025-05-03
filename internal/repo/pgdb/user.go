@@ -197,3 +197,17 @@ func (u *UserRepo) ExistsByEmail(ctx context.Context, email string) (bool, error
 	}
 	return true, nil
 }
+
+// update role
+func (u *UserRepo) UpdateRole(ctx context.Context, email, role string) error {
+	sql, args, _ := u.Builder.Update(userTable).
+		Set("role", role).
+		Where("email = ?", email).
+		ToSql()
+
+	_, err := u.Cluster.Exec(ctx, sql, args...)
+	if err != nil {
+		return fmt.Errorf("UserRepo - UpdateRole - r.Cluster.Exec: %v", err)
+	}
+	return nil
+}

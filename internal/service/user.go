@@ -121,8 +121,16 @@ func (u *UserService) isExist(ctx context.Context, log *slog.Logger, input AuthI
 
 func (u *UserService) AddMemberToFamily(ctx context.Context, log *slog.Logger, input AddMemberToFamilyInput) error {
 	log.Info("Service - UserService - AddMember")
+	var err error
 
-	err := u.userRepo.UpdateFamilyID(ctx, input.FamilyId, input.FamilyId)
+	// update role
+	err = u.userRepo.UpdateRole(ctx, input.UserEmail, input.Role)
+	if err != nil {
+		log.Error(fmt.Sprintf("Service - UserService - AddMember: %v", err))
+		return ErrCannotUpdateUser
+	}
+
+	err = u.userRepo.UpdateFamilyID(ctx, input.FamilyId, input.FamilyId)
 	if err != nil {
 		log.Error(fmt.Sprintf("Service - UserService - AddMember: %v", err))
 		return ErrCannotAddMemberToFamily
