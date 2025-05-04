@@ -5,6 +5,8 @@ import (
 
 	"family-flow-app/internal/entity"
 	"family-flow-app/pkg/postgres"
+
+	"github.com/Masterminds/squirrel"
 )
 
 const (
@@ -105,6 +107,40 @@ func (r *ChatsRepo) GetAll(ctx context.Context) ([]entity.Chat, error) {
 		"name",
 		"created_at",
 	).From(chatsTable).ToSql()
+
+	rows, err := r.Cluster.Query(ctx, sql, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var chats []entity.Chat
+	for rows.Next() {
+		var chat entity.Chat
+		err := rows.Scan(
+			&chat.ID,
+			&chat.Name,
+			&chat.CreatedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+		chats = append(chats, chat)
+	}
+	return chats, nil
+}
+
+// get chats with participants
+func (r *ChatsRepo) GetChatsWithParticipants(ctx context.Context, userID string) ([]entity.Chat, error) {
+	sql, args, _ := r.Builder.Select(
+		"c.id",
+		"c.name",
+		"c.created_at",
+	).From(chatsTable + " c").Join(
+		chatParticipantsTable + " cp ON c.id = cp.chat_id", // Добавлено условие соединения
+	).Where(
+		squirrel.Eq{"cp.user_id": userID},
+	).ToSql()
 
 	rows, err := r.Cluster.Query(ctx, sql, args...)
 	if err != nil {

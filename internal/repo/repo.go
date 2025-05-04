@@ -85,6 +85,7 @@ type Chat interface {
 	GetAll(ctx context.Context) ([]entity.Chat, error)
 	AddParticipant(ctx context.Context, chatID, userID string) error
 	GetParticipants(ctx context.Context, chatID string) ([]string, error)
+	GetChatsWithParticipants(ctx context.Context, userID string) ([]entity.Chat, error)
 }
 
 type Message interface {
