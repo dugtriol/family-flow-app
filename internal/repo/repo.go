@@ -89,7 +89,7 @@ type Chat interface {
 }
 
 type Message interface {
-	Create(ctx context.Context, message entity.Message) (string, error)
+	Create(ctx context.Context, message entity.Message) (entity.Message, error)
 	GetByChatID(ctx context.Context, chatID string) ([]entity.Message, error)
 }
 
