@@ -19,8 +19,8 @@ func NewMessagesRepo(db *postgres.Database) *MessagesRepo {
 	return &MessagesRepo{db}
 }
 
-// Create создает новое сообщение
-func (r *MessagesRepo) Create(ctx context.Context, message entity.Message) (string, error) {
+// Create создает новое сообщение и возвращает его полностью
+func (r *MessagesRepo) Create(ctx context.Context, message entity.Message) (entity.Message, error) {
 	sql, args, _ := r.Builder.Insert(messagesTable).Columns(
 		"chat_id",
 		"sender_id",
@@ -29,14 +29,20 @@ func (r *MessagesRepo) Create(ctx context.Context, message entity.Message) (stri
 		message.ChatID,
 		message.SenderID,
 		message.Content,
-	).Suffix("RETURNING id").ToSql()
+	).Suffix("RETURNING id, chat_id, sender_id, content, created_at").ToSql()
 
-	var id string
-	err := r.Cluster.QueryRow(ctx, sql, args...).Scan(&id)
+	var createdMessage entity.Message
+	err := r.Cluster.QueryRow(ctx, sql, args...).Scan(
+		&createdMessage.ID,
+		&createdMessage.ChatID,
+		&createdMessage.SenderID,
+		&createdMessage.Content,
+		&createdMessage.CreatedAt,
+	)
 	if err != nil {
-		return "", err
+		return entity.Message{}, err
 	}
-	return id, nil
+	return createdMessage, nil
 }
 
 // GetByChatID возвращает сообщения для указанного чата
