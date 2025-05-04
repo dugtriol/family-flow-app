@@ -29,6 +29,7 @@ func NewChatsRoutes(ctx context.Context, log *slog.Logger, route chi.Router, cha
 			r.Post("/{chatID}/participants", u.addParticipant(ctx, log))         // Добавление участника
 			r.Post("/with-participants", u.createChatWithParticipants(ctx, log)) // Создание чата с участниками
 			r.Get("/user", u.getChatsByUserID(ctx, log))                         // Получение чатов по ID пользователя
+			r.Get("/{chatID}/messages", u.handleGetMessages(ctx, log))           // Получение сообщений по ID чата
 		},
 	)
 }

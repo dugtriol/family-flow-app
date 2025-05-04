@@ -312,7 +312,7 @@ func handleSendMessage(
 
 	log.Info("handleSendMessage - Sending message", "chat_id", input.ChatID, "sender_id", input.SenderID)
 
-	messageID, err := chatService.CreateMessage(
+	output, err := chatService.CreateMessage(
 		ctx, log, service.CreateMessageInput{
 			ChatID:   input.ChatID,
 			SenderID: input.SenderID,
@@ -325,20 +325,18 @@ func handleSendMessage(
 		return
 	}
 
-	log.Info("handleSendMessage - Message sent successfully", "message_id", messageID)
-
-	// Отправляем сообщение всем подключённым клиентам
+	log.Info("handleSendMessage - Message sent successfully", "message:", output)
 	connections.Lock()
+	log.Info("handleSendMessage - Broadcasting message", "connected_clients", len(connections.clients))
 	defer connections.Unlock()
 	for client := range connections.clients {
+		if client == conn {
+			continue // Не отправляем сообщение обратно тому, кто его отправил
+		}
 		if err := client.WriteJSON(
 			WebSocketResponse{
 				Status: "success",
-				Data: map[string]string{
-					"chat_id":   input.ChatID,
-					"sender_id": input.SenderID,
-					"content":   input.Content,
-				},
+				Data:   output,
 			},
 		); err != nil {
 			log.Error("handleSendMessage - Failed to send message to client", "error", err)

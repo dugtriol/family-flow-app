@@ -137,7 +137,9 @@ type Chats interface {
 	CreateChatWithParticipants(ctx context.Context, log *slog.Logger, input CreateChatWithParticipantsInput) (
 		string, error,
 	)
-	CreateMessage(ctx context.Context, log *slog.Logger, input CreateMessageInput) (string, error)
+	CreateMessage(ctx context.Context, log *slog.Logger, input CreateMessageInput) (
+		entity.Message, error,
+	)
 	GetParticipants(ctx context.Context, log *slog.Logger, chatID string) ([]string, error)
 	GetMessagesByChatID(ctx context.Context, log *slog.Logger, chatID string) ([]entity.Message, error)
 	GetChatsWithParticipants(

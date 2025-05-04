@@ -120,7 +120,7 @@ func (s *ChatMessageService) CreateChatWithParticipants(
 
 // CreateMessage создает новое сообщение
 func (s *ChatMessageService) CreateMessage(ctx context.Context, log *slog.Logger, input CreateMessageInput) (
-	string, error,
+	entity.Message, error,
 ) {
 	log.Info("Service - ChatMessageService - CreateMessage")
 
@@ -130,14 +130,14 @@ func (s *ChatMessageService) CreateMessage(ctx context.Context, log *slog.Logger
 		Content:  input.Content,
 	}
 
-	id, err := s.messagesRepo.Create(ctx, message)
+	output, err := s.messagesRepo.Create(ctx, message)
 	if err != nil {
 		log.Error(fmt.Sprintf("Service - ChatMessageService - CreateMessage: %v", err))
-		return "", fmt.Errorf("failed to create message: %w", err)
+		return entity.Message{}, fmt.Errorf("failed to create message: %w", err)
 	}
 
-	log.Info(fmt.Sprintf("Service - ChatMessageService - CreateMessage - id: %s", id))
-	return id, nil
+	log.Info(fmt.Sprintf("Service - ChatMessageService - CreateMessage - entity.Message: %s", output))
+	return output, nil
 }
 
 // GetParticipants возвращает список участников чата
