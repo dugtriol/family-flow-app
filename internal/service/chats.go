@@ -40,9 +40,9 @@ type CreateChatWithParticipantsInput struct {
 
 // Input для создания сообщения
 type CreateMessageInput struct {
-	ChatID   string
-	SenderID string
-	Content  string
+	ChatID   string `json:"chat_id"`
+	SenderID string `json:"sender_id"`
+	Content  string `json:"content"`
 }
 
 // CreateChat создает новый чат
@@ -166,4 +166,19 @@ func (s *ChatMessageService) GetMessagesByChatID(
 	}
 
 	return messages, nil
+}
+
+// GetChatsWithParticipants возвращает список чатов с участниками
+func (s *ChatMessageService) GetChatsWithParticipants(
+	ctx context.Context, log *slog.Logger, userID string,
+) ([]entity.Chat, error) {
+	log.Info("Service - ChatMessageService - GetChatsWithParticipants")
+
+	chats, err := s.chatsRepo.GetChatsWithParticipants(ctx, userID)
+	if err != nil {
+		log.Error(fmt.Sprintf("Service - ChatMessageService - GetChatsWithParticipants: %v", err))
+		return nil, fmt.Errorf("failed to get chats with participants: %w", err)
+	}
+
+	return chats, nil
 }

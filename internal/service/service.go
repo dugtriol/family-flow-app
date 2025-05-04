@@ -140,6 +140,9 @@ type Chats interface {
 	CreateMessage(ctx context.Context, log *slog.Logger, input CreateMessageInput) (string, error)
 	GetParticipants(ctx context.Context, log *slog.Logger, chatID string) ([]string, error)
 	GetMessagesByChatID(ctx context.Context, log *slog.Logger, chatID string) ([]entity.Message, error)
+	GetChatsWithParticipants(
+		ctx context.Context, log *slog.Logger, userID string,
+	) ([]entity.Chat, error)
 }
 
 type Services struct {
