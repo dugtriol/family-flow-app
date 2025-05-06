@@ -8,6 +8,7 @@ import (
 	"family-flow-app/internal/entity"
 	"family-flow-app/internal/repo"
 	"family-flow-app/pkg/redis"
+
 	firebase "firebase.google.com/go/v4"
 )
 
@@ -42,6 +43,7 @@ type User interface {
 	UpdatePassword(ctx context.Context, log *slog.Logger, email, password string) error
 	ResetFamilyID(ctx context.Context, log *slog.Logger, id string) error
 	ExistsByEmail(ctx context.Context, log *slog.Logger, email string) (bool, error)
+	UpdateLocation(ctx context.Context, log *slog.Logger, input UpdateLocationInput) error
 }
 
 type InputSendInvite struct {

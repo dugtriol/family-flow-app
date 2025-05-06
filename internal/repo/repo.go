@@ -3,7 +3,7 @@ package repo
 import (
 	"context"
 	"log/slog"
-	`time`
+	"time"
 
 	"family-flow-app/internal/entity"
 	"family-flow-app/internal/repo/pgdb"
@@ -21,6 +21,7 @@ type User interface {
 	ResetFamilyID(ctx context.Context, id string) error
 	ExistsByEmail(ctx context.Context, email string) (bool, error)
 	UpdateRole(ctx context.Context, email, role string) error
+	UpdateLocation(ctx context.Context, userID string, latitude, longitude float64) error
 }
 
 type Family interface {

@@ -72,6 +72,8 @@ func (u *UserRepo) getByField(ctx context.Context, field, value string) (entity.
 		&output.Password,
 		&output.Role,
 		&output.FamilyId,
+		&output.Latitude,
+		&output.Longitude,
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -115,6 +117,8 @@ func (u *UserRepo) GetByFamilyID(ctx context.Context, familyID string) ([]entity
 			&user.Password,
 			&user.Role,
 			&user.FamilyId,
+			&user.Latitude,
+			&user.Longitude,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("UserRepo - GetByFamilyID - rows.Scan: %v", err)
@@ -208,6 +212,21 @@ func (u *UserRepo) UpdateRole(ctx context.Context, email, role string) error {
 	_, err := u.Cluster.Exec(ctx, sql, args...)
 	if err != nil {
 		return fmt.Errorf("UserRepo - UpdateRole - r.Cluster.Exec: %v", err)
+	}
+	return nil
+}
+
+// UpdateLocation обновляет геолокацию пользователя
+func (u *UserRepo) UpdateLocation(ctx context.Context, userID string, latitude, longitude float64) error {
+	sql, args, _ := u.Builder.Update(userTable).
+		Set("latitude", latitude).
+		Set("longitude", longitude).
+		Where("id = ?", userID).
+		ToSql()
+
+	_, err := u.Cluster.Exec(ctx, sql, args...)
+	if err != nil {
+		return fmt.Errorf("UserRepo - UpdateLocation - r.Cluster.Exec: %v", err)
 	}
 	return nil
 }

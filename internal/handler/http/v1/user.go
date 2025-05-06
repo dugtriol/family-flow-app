@@ -2,15 +2,16 @@ package v1
 
 import (
 	"context"
-	`errors`
+	"errors"
 	"log/slog"
 	"net/http"
 
 	"family-flow-app/internal/service"
 	"family-flow-app/pkg/response"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
-	`github.com/go-playground/validator/v10`
+	"github.com/go-playground/validator/v10"
 )
 
 const (
@@ -28,6 +29,7 @@ func NewUserRoutes(ctx context.Context, log *slog.Logger, route chi.Router, user
 			r.Get("/", u.get(ctx, log))
 			r.Put("/", u.update(ctx, log))
 			r.Put("/family_id", u.resetFamilyId(ctx, log))
+			r.Put("/location", u.updateLocation(ctx, log))
 		},
 	)
 }
@@ -197,5 +199,55 @@ func (u *UserRoutes) resetFamilyId(ctx context.Context, log *slog.Logger) http.H
 
 		w.WriteHeader(http.StatusOK)
 		render.JSON(w, r, "Family ID reset successfully")
+	}
+}
+
+type UpdateLocationInput struct {
+	Latitude  float64 `json:"latitude" validate:"required"`
+	Longitude float64 `json:"longitude" validate:"required"`
+}
+
+// @Summary Update user location
+// @Description Update user location
+// @Tags user
+// @Accept json
+// @Produce json
+// @Param input body UpdateLocationInput true "Update user location"
+// @Success 200 {string} string "Location updated successfully"
+// @Failure 400 {object} response.Response
+// @Failure 500 {object} response.Response
+// @Router /user/location [put]
+func (u *UserRoutes) updateLocation(ctx context.Context, log *slog.Logger) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		user, err := GetCurrentUserFromContext(r.Context())
+		if err != nil {
+			response.NewError(w, r, log, err, http.StatusUnauthorized, "Failed to get current user")
+			return
+		}
+
+		var input UpdateLocationInput
+		if err = render.DecodeJSON(r.Body, &input); err != nil {
+			response.NewError(w, r, log, err, http.StatusBadRequest, "Failed to parse request")
+			return
+		}
+		if err = validator.New().Struct(input); err != nil {
+			response.NewValidateError(w, r, log, http.StatusBadRequest, "Invalid request", err)
+			return
+		}
+
+		err = u.userService.UpdateLocation(
+			ctx, log, service.UpdateLocationInput{
+				UserID:    user.Id,
+				Latitude:  input.Latitude,
+				Longitude: input.Longitude,
+			},
+		)
+		if err != nil {
+			response.NewError(w, r, log, err, http.StatusInternalServerError, "Failed to update location")
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+		render.JSON(w, r, "Location updated successfully")
 	}
 }

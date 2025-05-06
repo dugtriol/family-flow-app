@@ -208,3 +208,22 @@ func (u *UserService) ExistsByEmail(ctx context.Context, log *slog.Logger, email
 	log.Info("Service - UserService - ExistsByEmail")
 	return u.userRepo.ExistsByEmail(ctx, email)
 }
+
+type UpdateLocationInput struct {
+	UserID    string
+	Latitude  float64
+	Longitude float64
+}
+
+func (u *UserService) UpdateLocation(ctx context.Context, log *slog.Logger, input UpdateLocationInput) error {
+	log.Info("Service - UserService - UpdateLocation", "userID", input.UserID, "latitude", input.Latitude, "longitude", input.Longitude)
+
+	err := u.userRepo.UpdateLocation(ctx, input.UserID, input.Latitude, input.Longitude)
+	if err != nil {
+		log.Error("Service - UserService - UpdateLocation - Failed to update location", "error", err)
+		return fmt.Errorf("failed to update location: %w", err)
+	}
+
+	log.Info("Service - UserService - UpdateLocation - Location updated successfully")
+	return nil
+}
