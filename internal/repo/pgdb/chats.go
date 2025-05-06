@@ -131,13 +131,14 @@ func (r *ChatsRepo) GetAll(ctx context.Context) ([]entity.Chat, error) {
 }
 
 // get chats with participants
+// GetChatsWithParticipants возвращает чаты с участниками для указанного пользователя
 func (r *ChatsRepo) GetChatsWithParticipants(ctx context.Context, userID string) ([]entity.Chat, error) {
 	sql, args, _ := r.Builder.Select(
 		"c.id",
 		"c.name",
 		"c.created_at",
 	).From(chatsTable + " c").Join(
-		chatParticipantsTable + " cp ON c.id = cp.chat_id", // Добавлено условие соединения
+		chatParticipantsTable + " cp ON c.id = cp.chat_id",
 	).Where(
 		squirrel.Eq{"cp.user_id": userID},
 	).ToSql()
@@ -159,7 +160,49 @@ func (r *ChatsRepo) GetChatsWithParticipants(ctx context.Context, userID string)
 		if err != nil {
 			return nil, err
 		}
+
+		// Получаем участников для текущего чата
+		participants, err := r.getParticipantsWithDetails(ctx, chat.ID)
+		if err != nil {
+			return nil, err
+		}
+		chat.Participants = participants
+
 		chats = append(chats, chat)
 	}
 	return chats, nil
+}
+
+// GetParticipantsWithDetails возвращает список участников чата с подробной информацией
+func (r *ChatsRepo) getParticipantsWithDetails(ctx context.Context, chatID string) ([]entity.ChatParticipant, error) {
+	sql, args, _ := r.Builder.Select(
+		"id",
+		"chat_id",
+		"user_id",
+		"joined_at",
+	).From(chatParticipantsTable).Where(
+		squirrel.Eq{"chat_id": chatID},
+	).ToSql()
+
+	rows, err := r.Cluster.Query(ctx, sql, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var participants []entity.ChatParticipant
+	for rows.Next() {
+		var participant entity.ChatParticipant
+		err := rows.Scan(
+			&participant.ID,
+			&participant.ChatId,
+			&participant.UserId,
+			&participant.JoinedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+		participants = append(participants, participant)
+	}
+	return participants, nil
 }
