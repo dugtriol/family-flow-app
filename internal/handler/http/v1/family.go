@@ -207,23 +207,32 @@ func (u *FamilyRoutes) getMembers(ctx context.Context, log *slog.Logger) http.Ha
 			return
 		}
 
+		output := formatOutput{Users: users}
+
 		w.WriteHeader(http.StatusOK)
-		render.JSON(w, r, formatUsers(users))
+		render.JSON(w, r, output)
 	}
 
 	// присоединится к семье
 	// просто по идентификатору семьи
 }
 
+type formatOutput struct {
+	Users []entity.User `json:"list"`
+}
+
 func formatUsers(users []entity.User) []map[string]interface{} {
 	formattedUsers := make([]map[string]interface{}, len(users))
 	for i, user := range users {
+
 		formattedUsers[i] = map[string]interface{}{
 			"id":        user.Id,
 			"name":      user.Name,
 			"email":     user.Email,
 			"role":      user.Role,
 			"family_id": user.FamilyId.String,
+			"latitude":  user.Latitude,
+			"longitude": user.Longitude,
 		}
 	}
 	return formattedUsers
