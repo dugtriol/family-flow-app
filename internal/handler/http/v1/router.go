@@ -56,6 +56,7 @@ func NewRouter(ctx context.Context, log *slog.Logger, route *chi.Mux, services *
 					NewWishlistRoutes(ctx, log, g, services.WishlistItem)
 					NewNotificationRoutes(ctx, log, g, services.Notification)
 					NewChatsRoutes(ctx, log, g, services.Chats)
+					NewRewardsRoutes(ctx, log, g, services.Rewards)
 				},
 			)
 		},

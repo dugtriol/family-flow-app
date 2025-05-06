@@ -94,6 +94,16 @@ type Message interface {
 	GetByChatID(ctx context.Context, chatID string) ([]entity.Message, error)
 }
 
+type Rewards interface {
+	Create(ctx context.Context, reward entity.Reward) (string, error)
+	GetByFamilyID(ctx context.Context, familyID string) ([]entity.Reward, error)
+	AddPoints(ctx context.Context, userID string, points int) error
+	SubtractPoints(ctx context.Context, userID string, points int) error
+	GetPoints(ctx context.Context, userID string) (int, error)
+	Redeem(ctx context.Context, userID, rewardID string) error
+	GetRedemptionsByUserID(ctx context.Context, userID string) ([]entity.RewardRedemption, error)
+}
+
 type Repositories struct {
 	User
 	Family
@@ -103,6 +113,7 @@ type Repositories struct {
 	Notification
 	Chat
 	Message
+	Rewards
 }
 
 func NewRepositories(db *postgres.Database) *Repositories {
@@ -115,5 +126,6 @@ func NewRepositories(db *postgres.Database) *Repositories {
 		Notification: pgdb.NewNotificationsRepo(db),
 		Chat:         pgdb.NewChatsRepo(db),
 		Message:      pgdb.NewMessagesRepo(db),
+		Rewards:      pgdb.NewRewardsRepo(db),
 	}
 }

@@ -149,6 +149,16 @@ type Chats interface {
 	) ([]entity.Chat, error)
 }
 
+type Rewards interface {
+	Create(ctx context.Context, log *slog.Logger, input entity.Reward) (string, error)
+	GetRewardsByFamilyID(ctx context.Context, log *slog.Logger, familyID string) ([]entity.Reward, error)
+	AddPoints(ctx context.Context, log *slog.Logger, userID string, points int) error
+	SubtractPoints(ctx context.Context, log *slog.Logger, userID string, points int) error
+	GetPoints(ctx context.Context, log *slog.Logger, userID string) (int, error)
+	Redeem(ctx context.Context, log *slog.Logger, userID, rewardID string) error
+	GetRedemptionsByUserID(ctx context.Context, log *slog.Logger, userID string) ([]entity.RewardRedemption, error)
+}
+
 type Services struct {
 	User         User
 	Email        Email
@@ -158,6 +168,7 @@ type Services struct {
 	TodoItem     TodoItem
 	Notification Notification
 	Chats        Chats
+	Rewards      Rewards
 }
 
 type ServicesDependencies struct {
@@ -177,5 +188,6 @@ func NewServices(ctx context.Context, dep ServicesDependencies) *Services {
 		TodoItem:     NewTodoService(dep.Repos.TodosItem),
 		Notification: NewNotificationService(ctx, dep.Rds, dep.App, dep.Repos.Notification),
 		Chats:        NewChatMessageService(dep.Repos.Chat, dep.Repos.Message),
+		Rewards:      NewRewardsService(dep.Repos.Rewards, dep.Repos.User),
 	}
 }
