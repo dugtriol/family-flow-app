@@ -49,8 +49,8 @@ func NewRouter(ctx context.Context, log *slog.Logger, route *chi.Mux, services *
 			r.Group(
 				func(g chi.Router) {
 					g.Use(AuthMiddleware(ctx, log, services.User))
-					NewUserRoutes(ctx, log, g, services.User)
-					NewFamilyRoutes(ctx, log, g, services.Email, services.Family)
+					NewUserRoutes(ctx, log, g, services.User, services.File)
+					NewFamilyRoutes(ctx, log, g, services.Email, services.Family, services.File)
 					NewTodoRoutes(ctx, log, g, services.TodoItem)
 					NewShoppingRoutes(ctx, log, g, services.ShoppingItem)
 					NewWishlistRoutes(ctx, log, g, services.WishlistItem)

@@ -2,9 +2,13 @@ package v1
 
 import (
 	"context"
+	"database/sql"
 	"errors"
+	"io"
 	"log/slog"
+	"mime/multipart"
 	"net/http"
+	"time"
 
 	"family-flow-app/internal/service"
 	"family-flow-app/pkg/response"
@@ -20,10 +24,13 @@ const (
 
 type UserRoutes struct {
 	userService service.User
+	fileService service.File
 }
 
-func NewUserRoutes(ctx context.Context, log *slog.Logger, route chi.Router, userService service.User) {
-	u := UserRoutes{userService: userService}
+func NewUserRoutes(
+	ctx context.Context, log *slog.Logger, route chi.Router, userService service.User, fileService service.File,
+) {
+	u := UserRoutes{userService: userService, fileService: fileService}
 	route.Route(
 		userString, func(r chi.Router) {
 			r.Get("/", u.get(ctx, log))
@@ -34,20 +41,26 @@ func NewUserRoutes(ctx context.Context, log *slog.Logger, route chi.Router, user
 	)
 }
 
-type userResponse struct {
-	Id       string `json:"id"`
-	Name     string `json:"name"`
-	Email    string `json:"email"`
-	Role     string `json:"role"`
-	FamilyId string `json:"family_id"`
-}
+// type userResponse struct {
+// 	Id        string    `json:"id"`
+// 	Name      string    `json:"name"`
+// 	Email     string    `json:"email"`
+// 	Role      string    `json:"role"`
+// 	FamilyId  string    `json:"family_id"`
+// 	Latitude  string    `json:"latitude" swaggerignore:"true"`
+// 	Longitude string    `json:"longitude" swaggerignore:"true"`
+// 	Gender    string    `json:"gender"`
+// 	Point     int       `json:"point"`
+// 	BirthDate time.Time `json:"birth_date"`
+// 	Avatar    string    `json:"avatar"`
+// }
 
 // @Summary Get user info
 // @Description Get user info
 // @Tags user
 // @Accept json
 // @Produce json
-// @Success 200 {object} userResponse
+// @Success 200 {object} entity.User
 // @Failure 400 {object} response.Response
 // @Failure 500 {object} response.Response
 // @Router /user [get]
@@ -61,28 +74,19 @@ func (u *UserRoutes) get(ctx context.Context, log *slog.Logger) http.HandlerFunc
 
 		w.WriteHeader(http.StatusOK)
 
-		var familyId string
-		if user.FamilyId.Valid {
-			familyId = user.FamilyId.String
-		} else {
-			familyId = ""
-		}
 		render.JSON(
-			w, r, &userResponse{
-				Id:       user.Id,
-				Name:     user.Name,
-				Email:    user.Email,
-				Role:     user.Role,
-				FamilyId: familyId,
-			},
+			w, r, user,
 		)
 	}
 }
 
 type UpdateUserInput struct {
-	Name  string `json:"name"`
-	Email string `json:"email" validate:"email"`
-	Role  string `json:"role" validate:"oneof=Parent Child"`
+	Name      string                `json:"name"`
+	Email     string                `json:"email" validate:"email"`
+	Role      string                `json:"role" validate:"oneof=Parent Child Unknown"`
+	Gender    string                `json:"gender" validate:"oneof=Male Female Unknown"`
+	BirthDate string                `json:"birth_date"`
+	Avatar    *multipart.FileHeader `json:"avatar"` // Поле для загружаемого файла
 }
 
 // @Summary Update user info
@@ -91,34 +95,94 @@ type UpdateUserInput struct {
 // @Accept json
 // @Produce json
 // @Param input body UpdateUserInput true "Update user info"
-// @Success 200 {object} userResponse
+// @Success 200 {object} entity.User
 // @Failure 400 {object} response.Response
 // @Failure 500 {object} response.Response
 // @Router /user [put]
 func (u *UserRoutes) update(ctx context.Context, log *slog.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		// Получаем текущего пользователя из контекста
 		user, err := GetCurrentUserFromContext(r.Context())
 		if err != nil {
 			response.NewError(w, r, log, err, http.StatusUnauthorized, "Failed to get current user")
 			return
 		}
 
-		var input UpdateUserInput
-		if err = render.DecodeJSON(r.Body, &input); err != nil {
-			response.NewError(w, r, log, err, http.StatusBadRequest, MsgFailedParsing)
-			return
-		}
-		if err = validator.New().Struct(input); err != nil {
-			response.NewValidateError(w, r, log, http.StatusBadRequest, MsgInvalidReq, err)
+		// Парсим multipart/form-data
+		if err := r.ParseMultipartForm(10 << 20); err != nil { // Ограничение на размер файла: 10 MB
+			response.NewError(w, r, log, err, http.StatusBadRequest, "Failed to parse form data")
 			return
 		}
 
+		// Получаем данные из формы
+		input := UpdateUserInput{
+			Name:      r.FormValue("name"),
+			Email:     r.FormValue("email"),
+			Role:      r.FormValue("role"),
+			Gender:    r.FormValue("gender"),
+			BirthDate: r.FormValue("birth_date"),
+		}
+
+		// Получаем файл аватара
+		file, fileHeader, err := r.FormFile("avatar")
+		if err != nil && err != http.ErrMissingFile {
+			response.NewError(w, r, log, err, http.StatusBadRequest, "Failed to get avatar file")
+			return
+		}
+		defer func() {
+			if file != nil {
+				file.Close()
+			}
+		}()
+		input.Avatar = fileHeader
+
+		// Преобразуем строку BirthDate в sql.NullTime
+		log.Info("Parsing birth date", slog.String("birth_date", input.BirthDate))
+		var birthDate sql.NullTime
+		if input.BirthDate != "" {
+			parsedDate, err := time.Parse("2006-01-02", input.BirthDate)
+			if err != nil {
+				response.NewError(w, r, log, err, http.StatusBadRequest, "Invalid date format. Use YYYY-MM-DD.")
+				return
+			}
+			birthDate = sql.NullTime{Time: parsedDate, Valid: true}
+		}
+
+		// Загружаем аватар в облако, если он передан
+		var avatar sql.NullString
+		if input.Avatar != nil {
+			fileBytes, err := io.ReadAll(file)
+			if err != nil {
+				response.NewError(w, r, log, err, http.StatusInternalServerError, "Failed to read avatar file")
+				return
+			}
+
+			fileInput := service.FileUploadInput{
+				FileName: input.Avatar.Filename,
+				FileBody: fileBytes,
+			}
+
+			avatarPath, err := u.fileService.Upload(ctx, log, fileInput)
+			if err != nil {
+				response.NewError(w, r, log, err, http.StatusInternalServerError, "Failed to upload avatar")
+				return
+			}
+
+			// Генерируем URL для сохранения в базе данных
+			avatarURL := u.fileService.BuildImageURL(avatarPath)
+			avatar = sql.NullString{String: avatarURL, Valid: true}
+		}
+
+		// Вызываем сервисный метод для обновления пользователя
 		err = u.userService.Update(
 			ctx, log, service.UpdateUserInput{
-				ID:    user.Id,
-				Name:  input.Name,
-				Email: input.Email,
-				Role:  input.Role,
+				ID:        user.Id,
+				Name:      input.Name,
+				Email:     input.Email,
+				Role:      input.Role,
+				Gender:    input.Gender,
+				BirthDate: birthDate,
+				Avatar:    avatar,
 			},
 		)
 		if err != nil {
@@ -126,16 +190,12 @@ func (u *UserRoutes) update(ctx context.Context, log *slog.Logger) http.HandlerF
 			return
 		}
 
+		// Формируем успешный ответ
 		w.WriteHeader(http.StatusOK)
 		render.JSON(
 			w,
 			r,
-			userResponse{
-				Name:     input.Name,
-				Email:    input.Email,
-				Role:     input.Role,
-				FamilyId: user.FamilyId.String,
-			},
+			user,
 		)
 	}
 }
