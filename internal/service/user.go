@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -140,19 +141,25 @@ func (u *UserService) AddMemberToFamily(ctx context.Context, log *slog.Logger, i
 }
 
 type UpdateUserInput struct {
-	ID    string
-	Name  string
-	Email string
-	Role  string
+	ID        string
+	Name      string
+	Email     string
+	Role      string
+	Gender    string
+	BirthDate sql.NullTime
+	Avatar    sql.NullString
 }
 
 func (u *UserService) Update(ctx context.Context, log *slog.Logger, input UpdateUserInput) error {
 	log.Info(fmt.Sprintf("Service - UserService - Update"))
 	user := entity.User{
-		Id:    input.ID,
-		Name:  input.Name,
-		Email: input.Email,
-		Role:  input.Role,
+		Id:        input.ID,
+		Name:      input.Name,
+		Email:     input.Email,
+		Role:      input.Role,
+		Gender:    input.Gender,
+		BirthDate: input.BirthDate,
+		Avatar:    input.Avatar,
 	}
 
 	err := u.userRepo.Update(ctx, user)
@@ -216,7 +223,15 @@ type UpdateLocationInput struct {
 }
 
 func (u *UserService) UpdateLocation(ctx context.Context, log *slog.Logger, input UpdateLocationInput) error {
-	log.Info("Service - UserService - UpdateLocation", "userID", input.UserID, "latitude", input.Latitude, "longitude", input.Longitude)
+	log.Info(
+		"Service - UserService - UpdateLocation",
+		"userID",
+		input.UserID,
+		"latitude",
+		input.Latitude,
+		"longitude",
+		input.Longitude,
+	)
 
 	err := u.userRepo.UpdateLocation(ctx, input.UserID, input.Latitude, input.Longitude)
 	if err != nil {

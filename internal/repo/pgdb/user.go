@@ -9,6 +9,8 @@ import (
 	"family-flow-app/internal/entity"
 	"family-flow-app/internal/repo/repoerrs"
 	"family-flow-app/pkg/postgres"
+
+	"github.com/Masterminds/squirrel"
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -74,6 +76,10 @@ func (u *UserRepo) getByField(ctx context.Context, field, value string) (entity.
 		&output.FamilyId,
 		&output.Latitude,
 		&output.Longitude,
+		&output.Gender,
+		&output.Point,
+		&output.BirthDate,
+		&output.Avatar,
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -119,6 +125,10 @@ func (u *UserRepo) GetByFamilyID(ctx context.Context, familyID string) ([]entity
 			&user.FamilyId,
 			&user.Latitude,
 			&user.Longitude,
+			&user.Gender,
+			&user.Point,
+			&user.BirthDate,
+			&user.Avatar,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("UserRepo - GetByFamilyID - rows.Scan: %v", err)
@@ -134,6 +144,9 @@ func (u *UserRepo) Update(ctx context.Context, user entity.User) error {
 		Set("email", user.Email).
 		//Set("password", user.Password).
 		Set("role", user.Role).
+		Set("gender", user.Gender).
+		Set("birth_date", user.BirthDate).
+		Set("avatar", user.Avatar).
 		Where("id = ?", user.Id).
 		ToSql()
 
@@ -227,6 +240,20 @@ func (u *UserRepo) UpdateLocation(ctx context.Context, userID string, latitude, 
 	_, err := u.Cluster.Exec(ctx, sql, args...)
 	if err != nil {
 		return fmt.Errorf("UserRepo - UpdateLocation - r.Cluster.Exec: %v", err)
+	}
+	return nil
+}
+
+// update point
+func (u *UserRepo) UpdatePoint(ctx context.Context, userID string, point int) error {
+	sql, args, _ := u.Builder.Update(userTable).
+		Set("point", squirrel.Expr("point + ?", point)). // Используем выражение для изменения значения
+		Where("id = ?", userID).
+		ToSql()
+
+	_, err := u.Cluster.Exec(ctx, sql, args...)
+	if err != nil {
+		return fmt.Errorf("UserRepo - UpdatePoint - r.Cluster.Exec: %v", err)
 	}
 	return nil
 }
