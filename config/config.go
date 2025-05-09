@@ -15,6 +15,7 @@ type (
 		Log      `yaml:"log"`
 		Redis    `yaml:"redis"`
 		Email    `yaml:"email"`
+		S3Data   `yaml:"s3"`
 	}
 
 	HTTP struct {
@@ -44,6 +45,12 @@ type (
 		Password  string `env-required:"true" yaml:"password" env:"FROM_EMAIL_PASSWORD"`
 		SMTP      string `env-required:"true" yaml:"smtp" env:"FROM_EMAIL_SMTP"`
 		Addr      string `env-required:"true" yaml:"smtp_addr" env:"SMTP_ADDR"`
+	}
+
+	S3Data struct {
+		BucketName       string `env-required:"true" yaml:"port" env:"BUCKET_NAME"`
+		Region           string `env-required:"true" yaml:"port" env:"REGION"`
+		EndpointResolver string `env-required:"true" yaml:"port" env:"ENDPOINT_RESOLVER"`
 	}
 )
 
