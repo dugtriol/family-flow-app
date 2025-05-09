@@ -32,8 +32,6 @@ DROP TABLE IF EXISTS "messages";
 
 DROP TABLE IF EXISTS "chat_participants";
 
-DROP TABLE IF EXISTS "user_rewards";
-
 DROP TABLE IF EXISTS "rewards";
 
 DROP TABLE IF EXISTS "reward_redemptions";

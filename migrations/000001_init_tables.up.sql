@@ -5,24 +5,31 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE TABLE IF NOT EXISTS "families" (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(255) NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    photo VARCHAR(255) DEFAULT NULL
 );
 
 DROP TYPE IF EXISTS user_role CASCADE;
 
-CREATE TYPE user_role AS ENUM ('Parent', 'Child');
+CREATE TYPE user_role AS ENUM ('Parent', 'Child', 'Unknown');
+
+CREATE TYPE user_gender AS ENUM ('Male', 'Female', 'Unknown');
 
 CREATE TABLE IF NOT EXISTS "users" (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(255) NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
     password VARCHAR(255) NOT NULL,
-    role user_role,
+    role user_role default 'Unknown',
     family_id UUID REFERENCES families (id) ON DELETE
     SET
         NULL default null,
         latitude FLOAT8 default null,
-        longitude FLOAT8 default null
+        longitude FLOAT8 default null,
+        gender user_gender default 'Unknown',
+        point INT default 0,
+        birth_date DATE DEFAULT NULL,
+        avatar VARCHAR(255) DEFAULT NULL
 );
 
 DROP TYPE IF EXISTS item_visibility CASCADE;
@@ -63,7 +70,8 @@ CREATE TABLE IF NOT EXISTS "todo_items" (
     created_by UUID REFERENCES users (id) ON DELETE CASCADE,
     is_archived BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    point INT default 0
 );
 
 DROP TYPE IF EXISTS wishlist_item_status CASCADE;
@@ -80,7 +88,8 @@ CREATE TABLE IF NOT EXISTS "wishlist_items" (
     reserved_by UUID REFERENCES users (id) ON DELETE CASCADE default null,
     is_archived BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    photo VARCHAR(255) DEFAULT NULL
 );
 
 CREATE TABLE IF NOT EXISTS "diary_items" (
@@ -133,15 +142,6 @@ CREATE TABLE IF NOT EXISTS chat_participants (
     joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP -- Время добавления в чат
 );
 
-CREATE TABLE IF NOT EXISTS user_rewards (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID UNIQUE REFERENCES users (id) ON DELETE CASCADE,
-    points INT DEFAULT 0,
-    -- Текущие очки пользователя
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
 CREATE TABLE IF NOT EXISTS rewards (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     family_id UUID REFERENCES families (id) ON DELETE CASCADE,
@@ -159,7 +159,7 @@ CREATE TABLE IF NOT EXISTS reward_redemptions (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID REFERENCES users (id) ON DELETE CASCADE,
     reward_id UUID REFERENCES rewards (id) ON DELETE CASCADE,
-    redeemed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP -- Время обмена
+    redeemed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 COMMIT;
