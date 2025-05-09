@@ -77,6 +77,7 @@ type Family interface {
 	AddMember(ctx context.Context, log *slog.Logger, input AddMemberToFamilyInput) error
 	GetByFamilyID(ctx context.Context, log *slog.Logger, familyId string) ([]entity.User, error)
 	GetByID(ctx context.Context, log *slog.Logger, id string) (entity.Family, error)
+	UpdatePhoto(ctx context.Context, log *slog.Logger, familyId, photoURL string) error
 }
 
 type WishlistItem interface {
@@ -159,6 +160,12 @@ type Rewards interface {
 	GetRedemptionsByUserID(ctx context.Context, log *slog.Logger, userID string) ([]entity.RewardRedemption, error)
 }
 
+type File interface {
+	Upload(ctx context.Context, log *slog.Logger, file FileUploadInput) (string, error)
+	Delete(ctx context.Context, path string) (bool, error)
+	BuildImageURL(pathName string) string
+}
+
 type Services struct {
 	User         User
 	Email        Email
@@ -169,6 +176,7 @@ type Services struct {
 	Notification Notification
 	Chats        Chats
 	Rewards      Rewards
+	File         File
 }
 
 type ServicesDependencies struct {
@@ -176,6 +184,10 @@ type ServicesDependencies struct {
 	Repos  *repo.Repositories
 	Config *config.Config
 	App    *firebase.App
+
+	BucketName       string
+	Region           string
+	EndpointResolver string
 }
 
 func NewServices(ctx context.Context, dep ServicesDependencies) *Services {
@@ -185,9 +197,10 @@ func NewServices(ctx context.Context, dep ServicesDependencies) *Services {
 		Family:       NewFamilyService(dep.Repos.Family, dep.Repos.User),
 		WishlistItem: NewWishlistService(dep.Repos.WishlistItem),
 		ShoppingItem: NewShoppingService(dep.Repos.ShoppingItem),
-		TodoItem:     NewTodoService(dep.Repos.TodosItem),
+		TodoItem:     NewTodoService(dep.Repos.TodosItem, dep.Repos.User),
 		Notification: NewNotificationService(ctx, dep.Rds, dep.App, dep.Repos.Notification),
 		Chats:        NewChatMessageService(dep.Repos.Chat, dep.Repos.Message),
 		Rewards:      NewRewardsService(dep.Repos.Rewards, dep.Repos.User),
+		File:         NewFileService(ctx, dep.BucketName, dep.Region, dep.EndpointResolver),
 	}
 }
