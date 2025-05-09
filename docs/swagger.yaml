@@ -1,5 +1,68 @@
 basePath: /api
 definitions:
+  entity.Chat:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      participants:
+        items:
+          $ref: '#/definitions/entity.ChatParticipant'
+        type: array
+    type: object
+  entity.ChatParticipant:
+    properties:
+      chat_id:
+        type: string
+      id:
+        type: string
+      joined_at:
+        type: string
+      user_id:
+        type: string
+    type: object
+  entity.Family:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  entity.Message:
+    properties:
+      chat_id:
+        type: string
+      content:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: string
+      sender_id:
+        type: string
+    type: object
+  entity.Notification:
+    properties:
+      body:
+        type: string
+      created_at:
+        type: string
+      data:
+        type: string
+      id:
+        type: string
+      is_read:
+        type: boolean
+      title:
+        type: string
+      user_id:
+        type: string
+    type: object
   entity.ShoppingItem:
     properties:
       created_at:
@@ -12,9 +75,13 @@ definitions:
         type: string
       id:
         type: string
+      is_archived:
+        type: boolean
       status:
         type: string
       title:
+        type: string
+      updated_at:
         type: string
       visibility:
         type: string
@@ -35,14 +102,22 @@ definitions:
         type: string
       id:
         type: string
+      is_archived:
+        type: boolean
+      point:
+        type: integer
       status:
         type: string
       title:
+        type: string
+      updated_at:
         type: string
     type: object
   entity.User:
     properties:
       email:
+        type: string
+      gender:
         type: string
       id:
         type: string
@@ -50,6 +125,8 @@ definitions:
         type: string
       password:
         type: string
+      point:
+        type: integer
       role:
         type: string
     type: object
@@ -63,7 +140,7 @@ definitions:
         type: string
       id:
         type: string
-      is_reserved:
+      is_archived:
         type: boolean
       link:
         type: string
@@ -71,28 +148,72 @@ definitions:
         type: string
       status:
         type: string
+      updated_at:
+        type: string
     type: object
   response.Response:
     properties:
       message:
         type: string
     type: object
-  v1.tokenResponse:
+  v1.ResetFamilyIdInput:
     properties:
-      token:
-        type: string
-    type: object
-  v1.userResponse:
-    properties:
-      email:
-        type: string
       family_id:
         type: string
       id:
         type: string
+    type: object
+  v1.UpdateLocationInput:
+    properties:
+      latitude:
+        type: number
+      longitude:
+        type: number
+    required:
+    - latitude
+    - longitude
+    type: object
+  v1.UpdatePasswordInput:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  v1.UpdateUserInput:
+    type: object
+  v1.inputAddParticipant:
+    properties:
+      user_id:
+        type: string
+    required:
+    - user_id
+    type: object
+  v1.inputCreateChat:
+    properties:
       name:
         type: string
-      role:
+    required:
+    - name
+    type: object
+  v1.inputCreateChatWithParticipants:
+    properties:
+      name:
+        type: string
+      participant_ids:
+        items:
+          type: string
+        type: array
+    required:
+    - name
+    - participant_ids
+    type: object
+  v1.tokenResponse:
+    properties:
+      token:
         type: string
     type: object
 host: localhost:8080
@@ -102,6 +223,37 @@ info:
   title: Family Flow App
   version: "1.0"
 paths:
+  /auth/exists:
+    get:
+      consumes:
+      - application/json
+      description: Check if user exists by email
+      parameters:
+      - description: Email
+        in: query
+        name: email
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: boolean
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Check if user exists by email
+      tags:
+      - user
   /auth/login:
     post:
       consumes:
@@ -138,6 +290,36 @@ paths:
       summary: Login
       tags:
       - auth
+  /auth/password:
+    put:
+      consumes:
+      - application/json
+      description: Update user password
+      parameters:
+      - description: Update user password
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/v1.UpdatePasswordInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Update user password
+      tags:
+      - user
   /auth/register:
     post:
       consumes:
@@ -186,6 +368,157 @@ paths:
       summary: Register new user
       tags:
       - auth
+  /chats:
+    post:
+      consumes:
+      - application/json
+      description: Create a new chat
+      parameters:
+      - description: Chat data
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/v1.inputCreateChat'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Chat created
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Create chat
+      tags:
+      - chats
+  /chats/{chatID}/messages:
+    get:
+      consumes:
+      - application/json
+      description: Get all messages for a specific chat
+      parameters:
+      - description: Chat ID
+        in: path
+        name: chatID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of messages
+          schema:
+            items:
+              $ref: '#/definitions/entity.Message'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Get messages by chat ID
+      tags:
+      - messages
+  /chats/{chatID}/participants:
+    post:
+      consumes:
+      - application/json
+      description: Add a participant to a chat
+      parameters:
+      - description: Chat ID
+        in: path
+        name: chatID
+        required: true
+        type: string
+      - description: Participant data
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/v1.inputAddParticipant'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Participant added
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Add participant
+      tags:
+      - chats
+  /chats/user:
+    get:
+      consumes:
+      - application/json
+      description: Get all chats for a user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of chats
+          schema:
+            items:
+              $ref: '#/definitions/entity.Chat'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Get chats by user ID
+      tags:
+      - chats
+  /chats/with-participants:
+    post:
+      consumes:
+      - application/json
+      description: Create a new chat with participants
+      parameters:
+      - description: Chat data
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/v1.inputCreateChatWithParticipants'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Chat created
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Create chat with participants
+      tags:
+      - chats
   /email/compare:
     post:
       consumes:
@@ -282,6 +615,36 @@ paths:
       summary: Create family
       tags:
       - family
+  /family/{familyId}:
+    get:
+      consumes:
+      - application/json
+      description: Get family by ID
+      parameters:
+      - description: Family ID
+        in: body
+        name: familyId
+        required: true
+        schema:
+          type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.Family'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Get family by ID
+      tags:
+      - family
   /family/add:
     post:
       consumes:
@@ -318,6 +681,42 @@ paths:
       summary: Add member to family
       tags:
       - family
+  /family/invite:
+    post:
+      consumes:
+      - application/json
+      description: Invite member to family
+      parameters:
+      - description: Email user
+        in: body
+        name: email_user
+        required: true
+        schema:
+          type: string
+      - description: Family ID
+        in: body
+        name: family_id
+        required: true
+        schema:
+          type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Member added to family
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Invite member to family
+      tags:
+      - family
   /family/members:
     get:
       consumes:
@@ -350,6 +749,143 @@ paths:
       summary: Get members
       tags:
       - family
+  /family/photo:
+    put:
+      consumes:
+      - multipart/form-data
+      description: Update family photo
+      parameters:
+      - description: Family ID
+        in: formData
+        name: familyId
+        required: true
+        type: string
+      - description: Photo file
+        in: formData
+        name: photo
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Photo updated successfully
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Update family photo
+      tags:
+      - family
+  /notification:
+    get:
+      consumes:
+      - application/json
+      description: Get notifications for a specific user
+      parameters:
+      - description: User ID
+        in: path
+        name: userID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/entity.Notification'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Get notifications by user ID
+      tags:
+      - notification
+  /notification/save-fcm-token:
+    post:
+      consumes:
+      - application/json
+      description: Save FCM token for a user
+      parameters:
+      - description: User ID
+        in: body
+        name: userId
+        required: true
+        schema:
+          type: string
+      - description: FCM Token
+        in: body
+        name: fcmToken
+        required: true
+        schema:
+          type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: FCM token saved successfully
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Save FCM token
+      tags:
+      - notification
+  /notification/send:
+    post:
+      consumes:
+      - application/json
+      description: Send notification to a user
+      parameters:
+      - description: Title
+        in: body
+        name: title
+        required: true
+        schema:
+          type: string
+      - description: Body
+        in: body
+        name: body
+        required: true
+        schema:
+          type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Notification sent successfully
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Send notification
+      tags:
+      - notification
   /shopping:
     post:
       consumes:
@@ -491,6 +1027,95 @@ paths:
       summary: Update shopping item
       tags:
       - shopping
+  /shopping/archived:
+    get:
+      consumes:
+      - application/json
+      description: Get archived shopping items by user ID
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/entity.ShoppingItem'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Get archived shopping items by user ID
+      tags:
+      - shopping
+  /shopping/buyer/{id}:
+    put:
+      consumes:
+      - application/json
+      description: Update buyer ID
+      parameters:
+      - description: ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Buyer ID
+        in: body
+        name: buyer_id
+        required: true
+        schema:
+          type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Shopping item updated
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Update buyer ID
+      tags:
+      - shopping
+  /shopping/cancel_reserved/{id}:
+    put:
+      consumes:
+      - application/json
+      description: Cancel update reserved by
+      parameters:
+      - description: ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Shopping item updated
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Cancel update reserved by
+      tags:
+      - shopping
   /shopping/private:
     get:
       consumes:
@@ -539,6 +1164,41 @@ paths:
           schema:
             $ref: '#/definitions/response.Response'
       summary: Get public shopping items by family ID
+      tags:
+      - shopping
+  /shopping/reserved/{id}:
+    put:
+      consumes:
+      - application/json
+      description: Update reserved by
+      parameters:
+      - description: ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Reserved by
+        in: body
+        name: reserved_by
+        required: true
+        schema:
+          type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Shopping item updated
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Update reserved by
       tags:
       - shopping
   /todo:
@@ -749,7 +1409,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/v1.userResponse'
+            $ref: '#/definitions/entity.User'
         "400":
           description: Bad Request
           schema:
@@ -759,6 +1419,95 @@ paths:
           schema:
             $ref: '#/definitions/response.Response'
       summary: Get user info
+      tags:
+      - user
+    put:
+      consumes:
+      - application/json
+      description: Update user info
+      parameters:
+      - description: Update user info
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/v1.UpdateUserInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.User'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Update user info
+      tags:
+      - user
+  /user/family_id:
+    put:
+      consumes:
+      - application/json
+      description: Reset user family id
+      parameters:
+      - description: Reset user family id
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/v1.ResetFamilyIdInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Reset user family id
+      tags:
+      - user
+  /user/location:
+    put:
+      consumes:
+      - application/json
+      description: Update user location
+      parameters:
+      - description: Update user location
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/v1.UpdateLocationInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Location updated successfully
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Update user location
       tags:
       - user
   /wishlist:
@@ -868,6 +1617,30 @@ paths:
       summary: Delete wishlist item
       tags:
       - wishlist
+    get:
+      consumes:
+      - application/json
+      description: Get wishlist items by user ID
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/entity.WishlistItem'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Get wishlist items by family user ID
+      tags:
+      - wishlist
     put:
       consumes:
       - application/json
@@ -924,6 +1697,95 @@ paths:
           schema:
             $ref: '#/definitions/response.Response'
       summary: Update wishlist item
+      tags:
+      - wishlist
+  /wishlist/{id}/cancel_reserved_by:
+    put:
+      consumes:
+      - application/json
+      description: Cancel update wishlist item reserved by
+      parameters:
+      - description: ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Wishlist item updated
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Cancel update wishlist item reserved by
+      tags:
+      - wishlist
+  /wishlist/{id}/reserved_by:
+    put:
+      consumes:
+      - application/json
+      description: Update wishlist item reserved by
+      parameters:
+      - description: ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Reserved By
+        in: body
+        name: reserved_by
+        required: true
+        schema:
+          type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Wishlist item updated
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Update wishlist item reserved by
+      tags:
+      - wishlist
+  /wishlist/archived:
+    get:
+      consumes:
+      - application/json
+      description: Get archived wishlist items by user ID
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/entity.WishlistItem'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Get archived wishlist items by user ID
       tags:
       - wishlist
 swagger: "2.0"
