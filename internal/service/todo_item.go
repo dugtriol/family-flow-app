@@ -11,10 +11,11 @@ import (
 
 type TodoService struct {
 	todoRepo repo.TodosItem
+	userRepo repo.User
 }
 
-func NewTodoService(todoRepo repo.TodosItem) *TodoService {
-	return &TodoService{todoRepo: todoRepo}
+func NewTodoService(todoRepo repo.TodosItem, userRepo repo.User) *TodoService {
+	return &TodoService{todoRepo: todoRepo, userRepo: userRepo}
 }
 
 type TodoCreateInput struct {
@@ -24,6 +25,7 @@ type TodoCreateInput struct {
 	Deadline    time.Time
 	AssignedTo  string
 	CreatedBy   string
+	Point       int
 }
 
 func (t *TodoService) Create(ctx context.Context, log *slog.Logger, input TodoCreateInput) (string, error) {
@@ -36,6 +38,7 @@ func (t *TodoService) Create(ctx context.Context, log *slog.Logger, input TodoCr
 		Deadline:    input.Deadline,
 		AssignedTo:  input.AssignedTo,
 		CreatedBy:   input.CreatedBy,
+		Point:       input.Point,
 	}
 
 	id, err := t.todoRepo.Create(ctx, log, item)
@@ -66,6 +69,7 @@ type TodoUpdateInput struct {
 	Status      string
 	Deadline    time.Time
 	AssignedTo  string
+	Point       int
 }
 
 func (t *TodoService) Update(ctx context.Context, log *slog.Logger, input TodoUpdateInput) error {
@@ -79,10 +83,18 @@ func (t *TodoService) Update(ctx context.Context, log *slog.Logger, input TodoUp
 			Status:      input.Status,
 			Deadline:    input.Deadline,
 			AssignedTo:  input.AssignedTo,
+			Point:       input.Point,
 		},
 	)
+
 	if err != nil {
 		log.Error("Service - TodoService - Update: %v", err)
+		return err
+	}
+
+	err = t.userRepo.UpdatePoint(ctx, input.AssignedTo, input.Point)
+	if err != nil {
+		log.Error("Service - TodoService - UpdatePoint: %v", err)
 		return err
 	}
 

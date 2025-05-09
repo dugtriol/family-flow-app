@@ -29,6 +29,7 @@ func (r *TodoRepo) Create(ctx context.Context, log *slog.Logger, item entity.Tod
 		"deadline",
 		"assigned_to",
 		"created_by",
+		"point",
 	).Values(
 		item.FamilyID,
 		item.Title,
@@ -36,6 +37,7 @@ func (r *TodoRepo) Create(ctx context.Context, log *slog.Logger, item entity.Tod
 		item.Deadline,
 		item.AssignedTo,
 		item.CreatedBy,
+		item.Point,
 	).Suffix("RETURNING id").ToSql()
 
 	var id string
@@ -65,7 +67,8 @@ func (r *TodoRepo) Update(ctx context.Context, log *slog.Logger, item entity.Tod
 		"deadline", item.Deadline,
 	).Set(
 		"assigned_to", item.AssignedTo,
-	).Where("id = ?", item.ID).ToSql()
+	).Set("point", item.Point).
+		Where("id = ?", item.ID).ToSql()
 	_, err := r.Cluster.Exec(ctx, sql, args...)
 	return err
 }
@@ -95,6 +98,7 @@ func (r *TodoRepo) getByField(ctx context.Context, log *slog.Logger, field, valu
 			&item.IsArchived,
 			&item.CreatedAt,
 			&item.UpdatedAt,
+			&item.Point,
 		); err != nil {
 			return nil, err
 		}

@@ -42,6 +42,7 @@ type inputTodoCreate struct {
 	Description string    `json:"description" validate:"required"`
 	Deadline    time.Time `json:"deadline" validate:"required"`
 	AssignedTo  string    `json:"assigned_to" validate:"required"`
+	Point       int       `json:"point"`
 }
 
 // @Summary Create todo
@@ -87,6 +88,7 @@ func (u *TodoRoutes) create(ctx context.Context, log *slog.Logger) http.HandlerF
 				Deadline:    input.Deadline,
 				AssignedTo:  input.AssignedTo,
 				CreatedBy:   user.Id,
+				Point:       input.Point,
 			},
 		)
 
@@ -142,6 +144,7 @@ type inputTodoUpdate struct {
 	Status      string    `json:"status" validate:"required"`
 	Deadline    time.Time `json:"deadline" validate:"required"`
 	AssignedTo  string    `json:"assigned_to" validate:"required"`
+	Point       int       `json:"point"`
 }
 
 // @Summary Update todo
@@ -193,6 +196,7 @@ func (u *TodoRoutes) update(ctx context.Context, log *slog.Logger) http.HandlerF
 				Status:      input.Status,
 				Deadline:    input.Deadline,
 				AssignedTo:  input.AssignedTo,
+				Point:       input.Point,
 			},
 		)
 		if err != nil {
