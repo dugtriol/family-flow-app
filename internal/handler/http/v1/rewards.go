@@ -4,7 +4,7 @@ import (
 	"context"
 	"net/http"
 
-	"family-flow-app/internal/entity"
+	`family-flow-app/internal/entity`
 	"family-flow-app/internal/service"
 	"family-flow-app/pkg/response"
 
@@ -23,25 +23,35 @@ func NewRewardsRoutes(ctx context.Context, log *slog.Logger, route chi.Router, r
 		rewardsService: rewardsService,
 	}
 
-	route.Route("/rewards", func(r chi.Router) {
-		r.Post("/", routes.createReward(ctx, log))                     // Создать вознаграждение
-		r.Get("/", routes.getRewardsByFamilyID(ctx, log))              // Получить список вознаграждений семьи
-		r.Get("/points", routes.getPoints(ctx, log))                   // Получить очки пользователя
-		r.Post("/{rewardID}/redeem", routes.redeemReward(ctx, log))    // Обменять очки на вознаграждение
-		r.Get("/redemptions", routes.getRedemptionsByUserID(ctx, log)) // Получить список обменов пользователя
-	})
+	route.Route(
+		"/rewards", func(r chi.Router) {
+			r.Post("/", routes.createReward(ctx, log))                     // Создать вознаграждение
+			r.Get("/", routes.getRewardsByFamilyID(ctx, log))              // Получить список вознаграждений семьи
+			r.Get("/points", routes.getPoints(ctx, log))                   // Получить очки пользователя
+			r.Post("/{rewardID}/redeem", routes.redeemReward(ctx, log))    // Обменять очки на вознаграждение
+			r.Get("/redemptions", routes.getRedemptionsByUserID(ctx, log)) // Получить список обменов пользователя
+		},
+	)
+}
+
+type RewardCreateInput struct {
+	FamilyID    string `json:"family_id" validate:"required"`
+	Title       string `json:"title" validate:"required"`
+	Description string `json:"description" `
+	Cost        int    `json:"cost" validate:"required"`
 }
 
 // createReward создает новое вознаграждение
 func (r *RewardsRoutes) createReward(ctx context.Context, log *slog.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
+
 		user, err := GetCurrentUserFromContext(req.Context())
 		if err != nil {
 			response.NewError(w, req, log, err, http.StatusUnauthorized, ErrNoUserInContextMsg)
 			return
 		}
 
-		var input entity.Reward
+		var input RewardCreateInput
 		if err := render.DecodeJSON(req.Body, &input); err != nil {
 			response.NewError(w, req, log, err, http.StatusBadRequest, "Invalid request payload")
 			return
@@ -50,7 +60,14 @@ func (r *RewardsRoutes) createReward(ctx context.Context, log *slog.Logger) http
 		// Устанавливаем familyID из контекста пользователя
 		input.FamilyID = user.FamilyId.String
 
-		rewardID, err := r.rewardsService.Create(ctx, log, input)
+		rewardID, err := r.rewardsService.Create(
+			ctx, log, entity.Reward{
+				FamilyID:    input.FamilyID,
+				Title:       input.Title,
+				Description: input.Description,
+				Cost:        input.Cost,
+			},
+		)
 		if err != nil {
 			response.NewError(w, req, log, err, http.StatusInternalServerError, "Failed to create reward")
 			return

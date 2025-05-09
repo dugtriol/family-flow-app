@@ -36,7 +36,9 @@ func (s *RewardsService) Create(ctx context.Context, log *slog.Logger, input ent
 }
 
 // GetRewardsByFamilyID возвращает список вознаграждений для семьи
-func (s *RewardsService) GetRewardsByFamilyID(ctx context.Context, log *slog.Logger, familyID string) ([]entity.Reward, error) {
+func (s *RewardsService) GetRewardsByFamilyID(ctx context.Context, log *slog.Logger, familyID string) (
+	[]entity.Reward, error,
+) {
 	log.Info("Service - RewardsService - GetRewardsByFamilyID", "familyID", familyID)
 
 	rewards, err := s.rewardsRepo.GetByFamilyID(ctx, familyID)
@@ -96,7 +98,7 @@ func (s *RewardsService) Redeem(ctx context.Context, log *slog.Logger, userID, r
 	log.Info("Service - RewardsService - RedeemReward", "userID", userID, "rewardID", rewardID)
 
 	// Получаем информацию о вознаграждении
-	reward, err := s.rewardsRepo.GetByFamilyID(ctx, rewardID)
+	reward, err := s.rewardsRepo.GetByID(ctx, rewardID)
 	if err != nil {
 		log.Error("Service - RewardsService - RedeemReward - Failed to get reward", "error", err)
 		return fmt.Errorf("failed to get reward: %w", err)
@@ -109,13 +111,21 @@ func (s *RewardsService) Redeem(ctx context.Context, log *slog.Logger, userID, r
 		return fmt.Errorf("failed to get points: %w", err)
 	}
 
-	if points < reward[0].Cost {
-		log.Error("Service - RewardsService - RedeemReward - Not enough points", "userID", userID, "points", points, "cost", reward[0].Cost)
+	if points < reward.Cost {
+		log.Error(
+			"Service - RewardsService - RedeemReward - Not enough points",
+			"userID",
+			userID,
+			"points",
+			points,
+			"cost",
+			reward.Cost,
+		)
 		return fmt.Errorf("not enough points to redeem reward")
 	}
 
 	// Списываем очки
-	err = s.rewardsRepo.SubtractPoints(ctx, userID, reward[0].Cost)
+	err = s.rewardsRepo.SubtractPoints(ctx, userID, reward.Cost)
 	if err != nil {
 		log.Error("Service - RewardsService - RedeemReward - Failed to subtract points", "error", err)
 		return fmt.Errorf("failed to subtract points: %w", err)
@@ -133,7 +143,9 @@ func (s *RewardsService) Redeem(ctx context.Context, log *slog.Logger, userID, r
 }
 
 // GetRedemptionsByUserID возвращает список вознаграждений, которые пользователь обменял
-func (s *RewardsService) GetRedemptionsByUserID(ctx context.Context, log *slog.Logger, userID string) ([]entity.RewardRedemption, error) {
+func (s *RewardsService) GetRedemptionsByUserID(
+	ctx context.Context, log *slog.Logger, userID string,
+) ([]entity.RewardRedemption, error) {
 	log.Info("Service - RewardsService - GetRedemptionsByUserID", "userID", userID)
 
 	redemptions, err := s.rewardsRepo.GetRedemptionsByUserID(ctx, userID)
@@ -142,6 +154,24 @@ func (s *RewardsService) GetRedemptionsByUserID(ctx context.Context, log *slog.L
 		return nil, fmt.Errorf("failed to get redemptions: %w", err)
 	}
 
-	log.Info("Service - RewardsService - GetRedemptionsByUserID - Redemptions retrieved successfully", "count", len(redemptions))
+	log.Info(
+		"Service - RewardsService - GetRedemptionsByUserID - Redemptions retrieved successfully",
+		"count",
+		len(redemptions),
+	)
 	return redemptions, nil
+}
+
+// GetByID 
+// возвращает информацию о вознаграждении по его ID
+func (s *RewardsService) GetByID(ctx context.Context, log *slog.Logger, id string) (entity.Reward, error) {
+	log.Info("Service - RewardsService - GetByID", "id", id)
+
+	reward, err := s.rewardsRepo.GetByID(ctx, id)
+	if err != nil {
+		log.Error("Service - RewardsService - GetByID - Failed to get reward", "error", err)
+		return entity.Reward{}, fmt.Errorf("failed to get reward: %w", err)
+	}
+	log.Info("Service - RewardsService - GetByID - Reward retrieved successfully", "reward", reward)
+	return reward, nil
 }

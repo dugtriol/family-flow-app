@@ -3,7 +3,6 @@ package pgdb
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"family-flow-app/internal/entity"
 	"family-flow-app/pkg/postgres"
@@ -12,8 +11,8 @@ import (
 )
 
 const (
-	rewardsTable           = "rewards"
-	userRewardsTable       = "user_rewards"
+	rewardsTable = "rewards"
+	//userRewardsTable       = "user_rewards"
 	rewardRedemptionsTable = "reward_redemptions"
 )
 
@@ -89,10 +88,9 @@ func (r *RewardsRepo) GetByFamilyID(ctx context.Context, familyID string) ([]ent
 
 // AddPoints добавляет очки пользователю
 func (r *RewardsRepo) AddPoints(ctx context.Context, userID string, points int) error {
-	sql, args, _ := r.Builder.Update(userRewardsTable).
-		Set("points", squirrel.Expr("points + ?", points)).
-		Set("updated_at", time.Now()).
-		Where(squirrel.Eq{"user_id": userID}).
+	sql, args, _ := r.Builder.Update(userTable).
+		Set("point", squirrel.Expr("point + ?", points)).
+		Where(squirrel.Eq{"id": userID}).
 		ToSql()
 
 	_, err := r.Cluster.Exec(ctx, sql, args...)
@@ -104,10 +102,9 @@ func (r *RewardsRepo) AddPoints(ctx context.Context, userID string, points int) 
 
 // SubtractPoints списывает очки у пользователя
 func (r *RewardsRepo) SubtractPoints(ctx context.Context, userID string, points int) error {
-	sql, args, _ := r.Builder.Update(userRewardsTable).
-		Set("points", squirrel.Expr("points - ?", points)).
-		Set("updated_at", time.Now()).
-		Where(squirrel.Eq{"user_id": userID}).
+	sql, args, _ := r.Builder.Update(userTable).
+		Set("point", squirrel.Expr("point - ?", points)).
+		Where(squirrel.Eq{"id": userID}).
 		ToSql()
 
 	_, err := r.Cluster.Exec(ctx, sql, args...)
@@ -119,9 +116,9 @@ func (r *RewardsRepo) SubtractPoints(ctx context.Context, userID string, points 
 
 // GetPoints возвращает количество очков пользователя
 func (r *RewardsRepo) GetPoints(ctx context.Context, userID string) (int, error) {
-	sql, args, _ := r.Builder.Select("points").
-		From(userRewardsTable).
-		Where(squirrel.Eq{"user_id": userID}).
+	sql, args, _ := r.Builder.Select("point").
+		From(userTable).
+		Where(squirrel.Eq{"id": userID}).
 		ToSql()
 
 	var points int
@@ -188,4 +185,30 @@ func (r *RewardsRepo) GetRedemptionsByUserID(ctx context.Context, userID string)
 		redemptions = append(redemptions, redemption)
 	}
 	return redemptions, nil
+}
+
+// get by id
+func (r *RewardsRepo) GetByID(ctx context.Context, id string) (entity.Reward, error) {
+	sql, args, _ := r.Builder.Select(
+		"id",
+		"family_id",
+		"title",
+		"description",
+		"cost",
+	).From(rewardsTable).Where(
+		squirrel.Eq{"id": id},
+	).ToSql()
+
+	var reward entity.Reward
+	err := r.Cluster.QueryRow(ctx, sql, args...).Scan(
+		&reward.ID,
+		&reward.FamilyID,
+		&reward.Title,
+		&reward.Description,
+		&reward.Cost,
+	)
+	if err != nil {
+		return entity.Reward{}, fmt.Errorf("failed to get reward: %w", err)
+	}
+	return reward, nil
 }
