@@ -3,14 +3,18 @@ package v1
 import (
 	"context"
 	"errors"
+	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 
 	"family-flow-app/internal/entity"
 	"family-flow-app/pkg/response"
+
 	"github.com/go-chi/chi/v5"
 
 	"family-flow-app/internal/service"
+
 	"github.com/go-chi/render"
 	"github.com/go-playground/validator/v10"
 )
@@ -22,12 +26,14 @@ const (
 type FamilyRoutes struct {
 	familyService service.Family
 	emailService  service.Email
+	fileService   service.File
 }
 
 func NewFamilyRoutes(
 	ctx context.Context, log *slog.Logger, route chi.Router, emailService service.Email, familyService service.Family,
+	fileService service.File,
 ) {
-	u := FamilyRoutes{familyService: familyService, emailService: emailService}
+	u := FamilyRoutes{familyService: familyService, emailService: emailService, fileService: fileService}
 	route.Route(
 		familyString, func(r chi.Router) {
 			r.Post("/add", u.addMember(ctx, log))
@@ -35,6 +41,7 @@ func NewFamilyRoutes(
 			r.Post("/members", u.getMembers(ctx, log))
 			r.Get("/{familyId}", u.getByFamilyId(ctx, log))
 			r.Post("/invite", u.inviteMember(ctx, log))
+			r.Put("/photo", u.updatePhoto(ctx, log))
 		},
 	)
 }
@@ -331,5 +338,70 @@ func (u *FamilyRoutes) inviteMember(ctx context.Context, log *slog.Logger) http.
 		render.JSON(w, r, "Invite sent")
 		return
 
+	}
+}
+
+// @Summary Update family photo
+// @Description Update family photo
+// @Tags family
+// @Accept multipart/form-data
+// @Produce json
+// @Param familyId formData string true "Family ID"
+// @Param photo formData file true "Photo file"
+// @Success 200 {string} string "Photo updated successfully"
+// @Failure 400 {object} response.Response
+// @Failure 500 {object} response.Response
+// @Router /family/photo [put]
+func (u *FamilyRoutes) updatePhoto(ctx context.Context, log *slog.Logger) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// Парсим multipart/form-data
+		if err := r.ParseMultipartForm(10 << 20); err != nil { // Ограничение на размер файла: 10 MB
+			response.NewError(w, r, log, err, http.StatusBadRequest, "Failed to parse form data")
+			return
+		}
+
+		// Получаем идентификатор семьи
+		familyId := r.FormValue("familyId")
+		if familyId == "" {
+			response.NewError(w, r, log, fmt.Errorf("missing familyId"), http.StatusBadRequest, "Missing familyId")
+			return
+		}
+
+		// Получаем файл фото
+		file, fileHeader, err := r.FormFile("photo")
+		if err != nil {
+			response.NewError(w, r, log, err, http.StatusBadRequest, "Failed to get photo file")
+			return
+		}
+		defer file.Close()
+
+		// Читаем содержимое файла
+		fileBytes, err := io.ReadAll(file)
+		if err != nil {
+			response.NewError(w, r, log, err, http.StatusInternalServerError, "Failed to read photo file")
+			return
+		}
+
+		// Загружаем фото в облако
+		fileInput := service.FileUploadInput{
+			FileName: fileHeader.Filename,
+			FileBody: fileBytes,
+		}
+		photoPath, err := u.fileService.Upload(ctx, log, fileInput)
+		if err != nil {
+			response.NewError(w, r, log, err, http.StatusInternalServerError, "Failed to upload photo")
+			return
+		}
+		avatarURL := u.fileService.BuildImageURL(photoPath)
+
+		// Обновляем фото в базе данных
+		err = u.familyService.UpdatePhoto(ctx, log, familyId, avatarURL)
+		if err != nil {
+			response.NewError(w, r, log, err, http.StatusInternalServerError, "Failed to update photo")
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+		render.JSON(w, r, "Photo updated successfully")
 	}
 }

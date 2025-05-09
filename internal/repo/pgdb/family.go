@@ -2,6 +2,7 @@ package pgdb
 
 import (
 	"context"
+	"fmt"
 
 	"family-flow-app/internal/entity"
 	"family-flow-app/pkg/postgres"
@@ -40,14 +41,28 @@ func (r *FamilyRepo) GetByID(ctx context.Context, id string) (entity.Family, err
 }
 
 func (r *FamilyRepo) getByField(ctx context.Context, field, value string) (entity.Family, error) {
-	sql, args, _ := r.Builder.Select("id", "name", "created_at").From(familyTable).Where(
+	sql, args, _ := r.Builder.Select("*").From(familyTable).Where(
 		field+" = ?", value,
 	).ToSql()
 
 	var family entity.Family
-	err := r.Cluster.QueryRow(ctx, sql, args...).Scan(&family.Id, &family.Name, &family.CreatedAt)
+	err := r.Cluster.QueryRow(ctx, sql, args...).Scan(&family.Id, &family.Name, &family.CreatedAt, &family.Photo)
 	if err != nil {
 		return entity.Family{}, err
 	}
 	return family, nil
+}
+
+func (r *FamilyRepo) UpdatePhoto(ctx context.Context, familyId, photoURL string) error {
+	sql, args, _ := r.Builder.Update(familyTable).
+		Set("photo", photoURL).
+		Where("id = ?", familyId).
+		ToSql()
+
+	_, err := r.Cluster.Exec(ctx, sql, args...)
+	if err != nil {
+		return fmt.Errorf("failed to update family photo: %w", err)
+	}
+
+	return nil
 }

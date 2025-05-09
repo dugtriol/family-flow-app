@@ -110,3 +110,16 @@ func (f *FamilyService) GetByID(ctx context.Context, log *slog.Logger, id string
 
 	return family, nil
 }
+
+func (s *FamilyService) UpdatePhoto(ctx context.Context, log *slog.Logger, familyId, photoURL string) error {
+	log.Info("Updating family photo", "familyId", familyId, "photoURL", photoURL)
+
+	err := s.familyRepo.UpdatePhoto(ctx, familyId, photoURL)
+	if err != nil {
+		log.Error("Failed to update family photo", "error", err)
+		return err
+	}
+
+	log.Info("Family photo updated successfully", "familyId", familyId)
+	return nil
+}
