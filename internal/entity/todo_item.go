@@ -14,4 +14,5 @@ type TodoItem struct {
 	IsArchived  bool      `json:"is_archived" pgdb:"is_archived"`
 	CreatedAt   time.Time `json:"created_at" pgdb:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at" pgdb:"updated_at"`
+	Point       int       `json:"point" pgdb:"point"`
 }

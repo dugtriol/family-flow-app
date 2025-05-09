@@ -1,6 +1,8 @@
 package entity
 
-import `database/sql`
+import (
+	"database/sql"
+)
 
 type User struct {
 	Id        string          `pgdb:"id" json:"id"`
@@ -11,4 +13,8 @@ type User struct {
 	FamilyId  sql.NullString  `pgdb:"family_id" json:"family_id" swaggerignore:"true"`
 	Latitude  sql.NullFloat64 `pgdb:"latitude" json:"latitude" swaggerignore:"true"`
 	Longitude sql.NullFloat64 `pgdb:"longitude" json:"longitude" swaggerignore:"true"`
+	Gender    string          `pgdb:"gender" json:"gender"`
+	Point     int             `pgdb:"point" json:"point"`
+	BirthDate sql.NullTime    `pgdb:"birth_date" json:"birth_date" swaggerignore:"true"`
+	Avatar    sql.NullString  `pgdb:"avatar" json:"avatar" swaggerignore:"true"`
 }

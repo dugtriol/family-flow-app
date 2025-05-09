@@ -13,8 +13,8 @@ type ShoppingItem struct {
 	Status      string         `json:"status" pgdb:"status"`
 	Visibility  string         `json:"visibility" pgdb:"visibility"`
 	CreatedBy   string         `json:"created_by" pgdb:"created_by"`
-	ReservedBy  sql.NullString `json:"reserved_by" pgdb:"reserved_by"`
-	BuyerId     sql.NullString `json:"buyer_id" pgdb:"buyer_id"`
+	ReservedBy  sql.NullString `json:"reserved_by" pgdb:"reserved_by" swaggerignore:"true"`
+	BuyerId     sql.NullString `json:"buyer_id" pgdb:"buyer_id" swaggerignore:"true"`
 	IsArchived  bool           `json:"is_archived" pgdb:"is_archived"`
 	CreatedAt   time.Time      `json:"created_at" pgdb:"created_at"`
 	UpdatedAt   time.Time      `json:"updated_at" pgdb:"updated_at"`

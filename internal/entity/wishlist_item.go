@@ -1,8 +1,8 @@
 package entity
 
 import (
-	`database/sql`
-	`time`
+	"database/sql"
+	"time"
 )
 
 type WishlistItem struct {
@@ -12,8 +12,9 @@ type WishlistItem struct {
 	Link        string         `json:"link" pgdb:"link"`
 	Status      string         `json:"status" pgdb:"status"`
 	CreatedBy   string         `json:"created_by" pgdb:"created_by"`
-	ReservedBy  sql.NullString `json:"reserved_by" pgdb:"reserved_by"`
+	ReservedBy  sql.NullString `json:"reserved_by" pgdb:"reserved_by" swaggerignore:"true"`
 	IsArchived  bool           `json:"is_archived" pgdb:"is_archived"`
 	CreatedAt   time.Time      `json:"created_at" pgdb:"created_at"`
 	UpdatedAt   time.Time      `json:"updated_at" pgdb:"updated_at"`
+	Photo       sql.NullString `pgdb:"photo" json:"photo" swaggerignore:"true"`
 }
