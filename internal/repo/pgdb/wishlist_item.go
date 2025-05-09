@@ -97,6 +97,7 @@ func (r *WishlistRepo) GetByUserID(ctx context.Context, log *slog.Logger, userID
 			&item.IsArchived,
 			&item.CreatedAt,
 			&item.UpdatedAt,
+			&item.Photo,
 		)
 		if err != nil {
 			return nil, err
@@ -160,6 +161,7 @@ func (r *WishlistRepo) GetArchivedByUserID(ctx context.Context, log *slog.Logger
 			&item.IsArchived,
 			&item.CreatedAt,
 			&item.UpdatedAt,
+			&item.Photo,
 		)
 		if err != nil {
 			return nil, err

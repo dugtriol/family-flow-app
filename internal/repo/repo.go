@@ -22,11 +22,13 @@ type User interface {
 	ExistsByEmail(ctx context.Context, email string) (bool, error)
 	UpdateRole(ctx context.Context, email, role string) error
 	UpdateLocation(ctx context.Context, userID string, latitude, longitude float64) error
+	UpdatePoint(ctx context.Context, userID string, point int) error
 }
 
 type Family interface {
 	Create(ctx context.Context, family entity.Family) (string, error)
 	GetByID(ctx context.Context, id string) (entity.Family, error)
+	UpdatePhoto(ctx context.Context, familyId, photoURL string) error
 }
 
 type ShoppingItem interface {
@@ -102,6 +104,7 @@ type Rewards interface {
 	GetPoints(ctx context.Context, userID string) (int, error)
 	Redeem(ctx context.Context, userID, rewardID string) error
 	GetRedemptionsByUserID(ctx context.Context, userID string) ([]entity.RewardRedemption, error)
+	GetByID(ctx context.Context, id string) (entity.Reward, error)
 }
 
 type Repositories struct {
