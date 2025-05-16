@@ -166,6 +166,7 @@ type Rewards interface {
 	GetRedemptionsByUserID(ctx context.Context, log *slog.Logger, userID string) ([]entity.RewardRedemption, error)
 	Update(ctx context.Context, log *slog.Logger, reward entity.Reward) error
 	GetByID(ctx context.Context, log *slog.Logger, id string) (entity.Reward, error)
+	Delete(ctx context.Context, log *slog.Logger, id string) error
 }
 
 type File interface {

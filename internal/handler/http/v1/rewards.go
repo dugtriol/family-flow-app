@@ -21,7 +21,10 @@ type RewardsRoutes struct {
 	familyService       service.Family
 }
 
-func NewRewardsRoutes(ctx context.Context, log *slog.Logger, route chi.Router, rewardsService service.Rewards, notificationService service.Notification, familyService service.Family) {
+func NewRewardsRoutes(
+	ctx context.Context, log *slog.Logger, route chi.Router, rewardsService service.Rewards,
+	notificationService service.Notification, familyService service.Family,
+) {
 	routes := &RewardsRoutes{
 		rewardsService:      rewardsService,
 		notificationService: notificationService,
@@ -34,7 +37,7 @@ func NewRewardsRoutes(ctx context.Context, log *slog.Logger, route chi.Router, r
 			r.Get(
 				"/",
 				routes.getRewardsByFamilyID(ctx, log),
-			) // Получить список вознаграждений семьи
+			)                                            // Получить список вознаграждений семьи
 			r.Get("/points", routes.getPoints(ctx, log)) // Получить очки пользователя
 			r.Post(
 				"/{rewardID}/redeem",
@@ -43,12 +46,13 @@ func NewRewardsRoutes(ctx context.Context, log *slog.Logger, route chi.Router, r
 			r.Get(
 				"/redemptions",
 				routes.getRedemptionsByUserID(ctx, log),
-			) // Получить список обменов пользователя
+			)                                                   // Получить список обменов пользователя
 			r.Put("/{rewardID}", routes.updateReward(ctx, log)) // Обновить награду
 			r.Get(
 				"/redemptions/{userID}",
 				routes.getRedemptionsByUserIDParam(ctx, log),
-			) // Получить список обменов для указанного пользователя
+			)                                                      // Получить список обменов для указанного пользователя
+			r.Delete("/{rewardID}", routes.deleteReward(ctx, log)) // Удалить награду
 		},
 	)
 }
@@ -295,5 +299,40 @@ func (r *RewardsRoutes) getRedemptionsByUserIDParam(ctx context.Context, log *sl
 		}
 
 		render.JSON(w, req, redemptions)
+	}
+}
+
+// delete reward
+// @Summary Delete reward
+// @Description Delete reward
+// @Tags rewards
+// @Accept json
+// @Produce json
+// @Param rewardID path string true "Reward ID"
+// @Success 200 {object} response.Response
+// @Failure 400 {object} response.Response
+// @Failure 500 {object} response.Response
+// @Router /rewards/{rewardID} [delete]
+func (r *RewardsRoutes) deleteReward(ctx context.Context, log *slog.Logger) http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		_, err := GetCurrentUserFromContext(req.Context())
+		if err != nil {
+			response.NewError(w, req, log, err, http.StatusUnauthorized, ErrNoUserInContextMsg)
+			return
+		}
+
+		rewardID := chi.URLParam(req, "rewardID")
+		if rewardID == "" {
+			response.NewError(w, req, log, nil, http.StatusBadRequest, "Reward ID is required")
+			return
+		}
+
+		err = r.rewardsService.Delete(ctx, log, rewardID)
+		if err != nil {
+			response.NewError(w, req, log, err, http.StatusInternalServerError, "Failed to delete reward")
+			return
+		}
+
+		render.JSON(w, req, map[string]string{"message": "Reward deleted successfully"})
 	}
 }

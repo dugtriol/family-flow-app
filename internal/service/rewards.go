@@ -189,3 +189,17 @@ func (s *RewardsService) Update(ctx context.Context, log *slog.Logger, reward en
 	log.Info("Service - RewardsService - Update - Reward updated successfully")
 	return nil
 }
+
+// Delete удаляет награду
+func (s *RewardsService) Delete(ctx context.Context, log *slog.Logger, id string) error {
+	log.Info("Service - RewardsService - Delete", "rewardID", id)
+
+	err := s.rewardsRepo.Delete(ctx, id)
+	if err != nil {
+		log.Error("Service - RewardsService - Delete - Failed to delete reward", "error", err)
+		return fmt.Errorf("failed to delete reward: %w", err)
+	}
+
+	log.Info("Service - RewardsService - Delete - Reward deleted successfully")
+	return nil
+}

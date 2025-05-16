@@ -112,6 +112,7 @@ type Rewards interface {
 	GetRedemptionsByUserID(ctx context.Context, userID string) ([]entity.RewardRedemption, error)
 	GetByID(ctx context.Context, id string) (entity.Reward, error)
 	Update(ctx context.Context, reward entity.Reward) error
+	Delete(ctx context.Context, id string) error
 }
 
 type Diary interface {
