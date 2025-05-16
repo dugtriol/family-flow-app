@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	TokenExp       = time.Hour * 3
+	TokenExp       = time.Hour * 24
 	TokenSecretKey = "supersecretkey"
 )
 
