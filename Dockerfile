@@ -24,6 +24,7 @@ FROM alpine:latest
 COPY --from=builder /app/server ./
 COPY --from=builder /app/migrations ./migrations
 COPY family-flow-app-4900a-firebase-adminsdk-fbsvc-9e2d528ca1.json ./family-flow-app-4900a-firebase-adminsdk-fbsvc-9e2d528ca1.json
+COPY family-flow-app-4900a-firebase-adminsdk-fbsvc-4aa2ce52fc.json ./family-flow-app-4900a-firebase-adminsdk-fbsvc-4aa2ce52fc.json
 COPY config/config.yaml ./config/config.yaml
 COPY .aws/ .aws/
 
