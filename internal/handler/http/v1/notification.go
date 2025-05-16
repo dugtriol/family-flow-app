@@ -69,7 +69,7 @@ func (u *NotificationRoutes) saveFcmToken(ctx context.Context, log *slog.Logger)
 			return
 		}
 
-		err = u.notificationService.SaveToken(ctx, user.Id, input.FcmToken)
+		err = u.notificationService.SaveToken(ctx, log, user.Id, input.FcmToken)
 		if err != nil {
 			response.NewError(w, r, log, err, http.StatusInternalServerError, "Failed to save FCM token")
 			return

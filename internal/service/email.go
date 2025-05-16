@@ -8,18 +8,20 @@ import (
 	"time"
 
 	"family-flow-app/config"
-	"family-flow-app/pkg/redis"
+	"github.com/patrickmn/go-cache"
 )
 
 type EmailService struct {
-	rd     *redis.Redis
+	cache  *cache.Cache
 	auth   smtp.Auth
 	config config.Email
 }
 
-func NewEmailService(rd *redis.Redis, email config.Email) *EmailService {
+func NewEmailService(email config.Email) *EmailService {
 	auth := smtp.PlainAuth("", email.FromEmail, email.Password, email.SMTP)
-	return &EmailService{rd: rd, auth: auth, config: email}
+
+	c := cache.New(2*time.Minute, 5*time.Minute)
+	return &EmailService{cache: c, auth: auth, config: email}
 }
 
 func (e *EmailService) SendCode(ctx context.Context, to []string) error {
@@ -27,7 +29,6 @@ func (e *EmailService) SendCode(ctx context.Context, to []string) error {
 
 	subject := "Family Flow App - Код верификации"
 	body := "Ваш код верификации: " + code
-	//message := "Subject: " + subject + "\r\n" + body
 	message := "Subject: " + subject + "\r\n" + "Content-Type: text/plain; charset=\"utf-8\"\r\n\r\n" + body
 
 	if err := smtp.SendMail(
@@ -40,10 +41,8 @@ func (e *EmailService) SendCode(ctx context.Context, to []string) error {
 		return err
 	}
 
-	statusCmd := e.rd.Set(ctx, to[0], code, 2*time.Minute)
-	if err := statusCmd.Err(); err != nil {
-		return err
-	}
+	// Сохраняем код в кэш
+	e.cache.Set(to[0], code, cache.DefaultExpiration)
 
 	return nil
 }
@@ -53,12 +52,13 @@ func (e *EmailService) generateCode() string {
 }
 
 func (e *EmailService) CompareCode(ctx context.Context, email, code string) (bool, error) {
-	statusCmd := e.rd.Get(ctx, email)
-	if err := statusCmd.Err(); err != nil {
-		return false, ErrCode
+
+	val, found := e.cache.Get(email)
+	if !found {
+		return false, fmt.Errorf("code not found or expired")
 	}
 
-	if statusCmd.Val() != code {
+	if val != code {
 		return false, nil
 	}
 
@@ -66,14 +66,14 @@ func (e *EmailService) CompareCode(ctx context.Context, email, code string) (boo
 }
 
 func (e *EmailService) GetAllKeys(ctx context.Context) ([]string, error) {
-	keysCmd := e.rd.Keys(ctx, "*")
-	if err := keysCmd.Err(); err != nil {
-		return nil, err
+
+	keys := make([]string, 0)
+	for k := range e.cache.Items() {
+		keys = append(keys, k)
 	}
-	return keysCmd.Val(), nil
+	return keys, nil
 }
 
-// отправить пригласительное письмо
 func (e *EmailService) SendInvite(ctx context.Context, invite InputSendInvite) error {
 	subject := "Family Flow App - Приглашение присоединиться к семье"
 	body := fmt.Sprintf(

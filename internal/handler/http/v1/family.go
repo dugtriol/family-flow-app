@@ -24,16 +24,20 @@ const (
 )
 
 type FamilyRoutes struct {
-	familyService service.Family
-	emailService  service.Email
-	fileService   service.File
+	familyService       service.Family
+	emailService        service.Email
+	fileService         service.File
+	notificationService service.Notification
 }
 
 func NewFamilyRoutes(
 	ctx context.Context, log *slog.Logger, route chi.Router, emailService service.Email, familyService service.Family,
-	fileService service.File,
+	fileService service.File, notificationService service.Notification,
 ) {
-	u := FamilyRoutes{familyService: familyService, emailService: emailService, fileService: fileService}
+	u := FamilyRoutes{
+		familyService: familyService, emailService: emailService, fileService: fileService,
+		notificationService: notificationService,
+	}
 	route.Route(
 		familyString, func(r chi.Router) {
 			r.Post("/add", u.addMember(ctx, log))
@@ -42,6 +46,7 @@ func NewFamilyRoutes(
 			r.Get("/{familyId}", u.getByFamilyId(ctx, log))
 			r.Post("/invite", u.inviteMember(ctx, log))
 			r.Put("/photo", u.updatePhoto(ctx, log))
+			r.Post("/respond-invite", u.respondToInvite(ctx, log))
 		},
 	)
 }
@@ -135,17 +140,11 @@ func (u *FamilyRoutes) addMember(ctx context.Context, log *slog.Logger) http.Han
 			return
 		}
 
-		err = u.familyService.AddMember(
-			ctx, log, service.AddMemberToFamilyInput{
-				FamilyId:  input.FamilyId,
-				UserEmail: input.EmailUser,
-				Role:      input.Role,
-			},
-		)
-
+		// Проверяем, зарегистрирован ли пользователь
+		targetUser, err := u.familyService.IsExistUserByEmail(ctx, log, input.EmailUser)
 		if errors.Is(err, service.ErrUserNotFound) {
+			// Если пользователь не найден, отправляем приглашение на почту
 			var family entity.Family
-
 			if family, err = u.familyService.GetFamilyByUserID(ctx, log, input.FamilyId); err != nil {
 				response.NewError(w, r, log, err, http.StatusNotFound, "Family not found")
 				return
@@ -162,17 +161,106 @@ func (u *FamilyRoutes) addMember(ctx context.Context, log *slog.Logger) http.Han
 				return
 			}
 			w.WriteHeader(http.StatusOK)
-			render.JSON(w, r, "Invite sent")
+			render.JSON(w, r, "Invite sent to email")
 			return
 		} else if err != nil {
-			response.NewError(w, r, log, err, http.StatusInternalServerError, "Failed to add member to family")
+			response.NewError(w, r, log, err, http.StatusInternalServerError, "Failed to check user")
+			return
+		}
+
+		// Формируем текст уведомления в зависимости от роли
+		var roleDescription string
+		switch input.Role {
+		case "Parent":
+			roleDescription = "родитель"
+		case "Child":
+			roleDescription = "ребенок"
+		default:
+			roleDescription = "член семьи"
+		}
+
+		// Если пользователь зарегистрирован, отправляем пуш-уведомление
+		err = u.notificationService.SendNotification(
+			ctx, log, service.NotificationCreateInput{
+				UserID: targetUser.Id,
+				Title:  "Приглашение в семью",
+				Body:   fmt.Sprintf("%s приглашает вас присоединиться к семье как %s", user.Name, roleDescription),
+				Data:   fmt.Sprintf(
+					`{"family_id": "%s", "inviter_id": "%s", "role": "%s"}`,
+					input.FamilyId,
+					user.Id,
+					input.Role,
+				),
+			},
+		)
+		if err != nil {
+			response.NewError(w, r, log, err, http.StatusInternalServerError, "Failed to send notification")
 			return
 		}
 
 		w.WriteHeader(http.StatusOK)
-		render.JSON(w, r, "Member added to family")
+		render.JSON(w, r, "Invite sent as notification")
 	}
 }
+
+// func (u *FamilyRoutes) addMember(ctx context.Context, log *slog.Logger) http.HandlerFunc {
+// 	return func(w http.ResponseWriter, r *http.Request) {
+// 		var input inputAddMemberToFamily
+// 		var err error
+
+// 		user, err := GetCurrentUserFromContext(r.Context())
+// 		if err != nil {
+// 			response.NewError(w, r, log, err, http.StatusUnauthorized, "Failed to get current user")
+// 			return
+// 		}
+
+// 		if err = render.DecodeJSON(r.Body, &input); err != nil {
+// 			response.NewError(w, r, log, err, http.StatusBadRequest, MsgFailedParsing)
+// 			return
+// 		}
+// 		if err = validator.New().Struct(input); err != nil {
+// 			response.NewValidateError(w, r, log, http.StatusBadRequest, MsgInvalidReq, err)
+// 			return
+// 		}
+
+// 		err = u.familyService.AddMember(
+// 			ctx, log, service.AddMemberToFamilyInput{
+// 				FamilyId:  input.FamilyId,
+// 				UserEmail: input.EmailUser,
+// 				Role:      input.Role,
+// 			},
+// 		)
+
+// 		if errors.Is(err, service.ErrUserNotFound) {
+// 			var family entity.Family
+
+// 			if family, err = u.familyService.GetFamilyByUserID(ctx, log, input.FamilyId); err != nil {
+// 				response.NewError(w, r, log, err, http.StatusNotFound, "Family not found")
+// 				return
+// 			}
+// 			if err = u.emailService.SendInvite(
+// 				ctx, service.InputSendInvite{
+// 					To:         []string{input.EmailUser},
+// 					From:       user.Email,
+// 					FromName:   user.Name,
+// 					FamilyName: family.Name,
+// 				},
+// 			); err != nil {
+// 				response.NewError(w, r, log, err, http.StatusInternalServerError, "Failed to send invite")
+// 				return
+// 			}
+// 			w.WriteHeader(http.StatusOK)
+// 			render.JSON(w, r, "Invite sent")
+// 			return
+// 		} else if err != nil {
+// 			response.NewError(w, r, log, err, http.StatusInternalServerError, "Failed to add member to family")
+// 			return
+// 		}
+
+// 		w.WriteHeader(http.StatusOK)
+// 		render.JSON(w, r, "Member added to family")
+// 	}
+// }
 
 type inputGetMembers struct {
 	FamilyId string `json:"family_id"`
@@ -403,5 +491,54 @@ func (u *FamilyRoutes) updatePhoto(ctx context.Context, log *slog.Logger) http.H
 
 		w.WriteHeader(http.StatusOK)
 		render.JSON(w, r, "Photo updated successfully")
+	}
+}
+
+type RespondToInviteInput struct {
+	FamilyId string `json:"family_id" validate:"required,uuid"`
+	Role     string `json:"role" validate:"required"`
+	Response string `json:"response" validate:"required,oneof=accept decline"`
+}
+
+func (u *FamilyRoutes) respondToInvite(ctx context.Context, log *slog.Logger) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var input RespondToInviteInput
+		var err error
+
+		user, err := GetCurrentUserFromContext(r.Context())
+		if err != nil {
+			response.NewError(w, r, log, err, http.StatusUnauthorized, "Failed to get current user")
+			return
+		}
+
+		if err = render.DecodeJSON(r.Body, &input); err != nil {
+			response.NewError(w, r, log, err, http.StatusBadRequest, MsgFailedParsing)
+			return
+		}
+		if err = validator.New().Struct(input); err != nil {
+			response.NewValidateError(w, r, log, http.StatusBadRequest, MsgInvalidReq, err)
+			return
+		}
+
+		if input.Response == "accept" {
+			// Добавляем пользователя в семью
+			err = u.familyService.AddMember(
+				ctx, log, service.AddMemberToFamilyInput{
+					FamilyId:  input.FamilyId,
+					UserEmail: user.Email,
+					Role:      input.Role,
+				},
+			)
+			if err != nil {
+				response.NewError(w, r, log, err, http.StatusInternalServerError, "Failed to add member to family")
+				return
+			}
+			w.WriteHeader(http.StatusOK)
+			render.JSON(w, r, "You have joined the family")
+		} else {
+			// Пользователь отклонил приглашение
+			w.WriteHeader(http.StatusOK)
+			render.JSON(w, r, "You have declined the invitation")
+		}
 	}
 }
