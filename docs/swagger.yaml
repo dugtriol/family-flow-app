@@ -1,27 +1,20 @@
 basePath: /api
 definitions:
-  entity.Chat:
+  entity.DiaryItem:
     properties:
       created_at:
         type: string
-      id:
+      created_by:
         type: string
-      name:
+      description:
         type: string
-      participants:
-        items:
-          $ref: '#/definitions/entity.ChatParticipant'
-        type: array
-    type: object
-  entity.ChatParticipant:
-    properties:
-      chat_id:
+      emoji:
         type: string
       id:
         type: string
-      joined_at:
+      title:
         type: string
-      user_id:
+      updated_at:
         type: string
     type: object
   entity.Family:
@@ -210,6 +203,28 @@ definitions:
     required:
     - name
     - participant_ids
+    type: object
+  v1.inputDiaryCreate:
+    properties:
+      description:
+        type: string
+      emoji:
+        type: string
+      title:
+        type: string
+    required:
+    - title
+    type: object
+  v1.inputDiaryUpdate:
+    properties:
+      description:
+        type: string
+      emoji:
+        type: string
+      title:
+        type: string
+    required:
+    - title
     type: object
   v1.tokenResponse:
     properties:
@@ -464,31 +479,6 @@ paths:
       summary: Add participant
       tags:
       - chats
-  /chats/user:
-    get:
-      consumes:
-      - application/json
-      description: Get all chats for a user
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: List of chats
-          schema:
-            items:
-              $ref: '#/definitions/entity.Chat'
-            type: array
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/response.Response'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/response.Response'
-      summary: Get chats by user ID
-      tags:
-      - chats
   /chats/with-participants:
     post:
       consumes:
@@ -519,6 +509,123 @@ paths:
       summary: Create chat with participants
       tags:
       - chats
+  /diary:
+    get:
+      consumes:
+      - application/json
+      description: Get all diary entries for a specific user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/entity.DiaryItem'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Get diary entries by user ID
+      tags:
+      - diary
+    post:
+      consumes:
+      - application/json
+      description: Create a new diary entry
+      parameters:
+      - description: Diary entry data
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/v1.inputDiaryCreate'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Diary entry created
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Create diary entry
+      tags:
+      - diary
+  /diary/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a diary entry by ID
+      parameters:
+      - description: Diary entry ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Diary entry deleted
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Delete diary entry
+      tags:
+      - diary
+    put:
+      consumes:
+      - application/json
+      description: Update an existing diary entry
+      parameters:
+      - description: Diary entry ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Diary entry data
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/v1.inputDiaryUpdate'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Diary entry updated
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Update diary entry
+      tags:
+      - diary
   /email/compare:
     post:
       consumes:
@@ -886,6 +993,35 @@ paths:
       summary: Send notification
       tags:
       - notification
+  /rewards/{rewardID}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete reward
+      parameters:
+      - description: Reward ID
+        in: path
+        name: rewardID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Delete reward
+      tags:
+      - rewards
   /shopping:
     post:
       consumes:
