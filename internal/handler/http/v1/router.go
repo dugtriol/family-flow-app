@@ -39,7 +39,7 @@ func NewRouter(ctx context.Context, log *slog.Logger, route *chi.Mux, services *
 	log.Info("Swagger is available")
 	route.Get(
 		"/swagger/*", httpSwagger.Handler(
-			httpSwagger.URL("http://localhost:8080/swagger/doc.json"),
+			httpSwagger.URL("http://family-flow-app-1-aigul.amvera.io:8080/swagger/doc.json"),
 		),
 	)
 

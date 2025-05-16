@@ -25,9 +25,12 @@ type ShoppingRoutes struct {
 }
 
 func NewShoppingRoutes(
-	ctx context.Context, log *slog.Logger, route chi.Router, shoppingService service.ShoppingItem, notificationService service.Notification, familyService service.Family,
+	ctx context.Context, log *slog.Logger, route chi.Router, shoppingService service.ShoppingItem,
+	notificationService service.Notification, familyService service.Family,
 ) {
-	u := ShoppingRoutes{shoppingService: shoppingService, notificationService: notificationService, familyService: familyService}
+	u := ShoppingRoutes{
+		shoppingService: shoppingService, notificationService: notificationService, familyService: familyService,
+	}
 	route.Route(
 		shoppingString, func(r chi.Router) {
 			r.Post("/", u.create(ctx, log))
@@ -407,7 +410,7 @@ func (u *ShoppingRoutes) updateBuyerId(ctx context.Context, log *slog.Logger) ht
 			ctx, log, service.NotificationCreateInput{
 				UserID: user.Id, // ID создателя элемента
 				Title:  "Элемент куплен",
-				Body:   fmt.Sprintf("Элемент '%s' был куплен пользователем %s", item, user.Name),
+				Body:   fmt.Sprintf("Элемент '%s' был куплен пользователем %s", item.Title, user.Name),
 			},
 		)
 		if err != nil {
