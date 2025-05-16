@@ -14,7 +14,6 @@ import (
 	"family-flow-app/pkg/firebase"
 	"family-flow-app/pkg/httpserver"
 	"family-flow-app/pkg/postgres"
-	"family-flow-app/pkg/redis"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -32,11 +31,11 @@ func Run(configPath string) {
 	log := setLogger(cfg.Level)
 	log.Info("Init logger")
 
-	rds, err := redis.New(ctx, log, cfg.Redis.Addr, cfg.Redis.Password, cfg.Redis.DB)
-	if err != nil {
-		fmt.Println(err.Error())
-	}
-	log.Info("Init redis")
+	//rds, err := redis.New(ctx, log, cfg.Redis.Addr, cfg.Redis.Password, cfg.Redis.DB)
+	//if err != nil {
+	//	fmt.Println(err.Error())
+	//}
+	//log.Info("Init redis")
 
 	//postgres
 	database, err := postgres.New(ctx, cfg.Conn, postgres.MaxPoolSize(cfg.MaxPoolSize))
@@ -47,7 +46,11 @@ func Run(configPath string) {
 	//repositories
 	repos := repo.NewRepositories(database)
 	ntf := firebase.Init(ctx)
-	dependencies := service.ServicesDependencies{Repos: repos, Rds: rds, Config: cfg, App: ntf}
+	log.Info("Init firebase")
+	dependencies := service.ServicesDependencies{
+		Repos: repos, Config: cfg, App: ntf, BucketName: cfg.BucketName,
+		Region: cfg.Region, EndpointResolver: cfg.EndpointResolver,
+	}
 
 	//services
 	services := service.NewServices(ctx, dependencies)

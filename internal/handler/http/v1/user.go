@@ -87,6 +87,7 @@ type UpdateUserInput struct {
 	Gender    string                `json:"gender" validate:"oneof=Male Female Unknown"`
 	BirthDate string                `json:"birth_date"`
 	Avatar    *multipart.FileHeader `json:"avatar"` // Поле для загружаемого файла
+	AvatarURL string                `json:"avatar_url"`
 }
 
 // @Summary Update user info
@@ -123,19 +124,6 @@ func (u *UserRoutes) update(ctx context.Context, log *slog.Logger) http.HandlerF
 			BirthDate: r.FormValue("birth_date"),
 		}
 
-		// Получаем файл аватара
-		file, fileHeader, err := r.FormFile("avatar")
-		if err != nil && err != http.ErrMissingFile {
-			response.NewError(w, r, log, err, http.StatusBadRequest, "Failed to get avatar file")
-			return
-		}
-		defer func() {
-			if file != nil {
-				file.Close()
-			}
-		}()
-		input.Avatar = fileHeader
-
 		// Преобразуем строку BirthDate в sql.NullTime
 		log.Info("Parsing birth date", slog.String("birth_date", input.BirthDate))
 		var birthDate sql.NullTime
@@ -148,32 +136,48 @@ func (u *UserRoutes) update(ctx context.Context, log *slog.Logger) http.HandlerF
 			birthDate = sql.NullTime{Time: parsedDate, Valid: true}
 		}
 
-		// Загружаем аватар в облако, если он передан
 		var avatar sql.NullString
-		if input.Avatar != nil {
-			fileBytes, err := io.ReadAll(file)
-			if err != nil {
-				response.NewError(w, r, log, err, http.StatusInternalServerError, "Failed to read avatar file")
+
+		avatar = sql.NullString{String: r.FormValue("avatar_url"), Valid: true}
+
+		if avatar.String == "empty" {
+			// Получаем файл аватара
+			file, fileHeader, err := r.FormFile("avatar")
+			if err != nil && err != http.ErrMissingFile {
+				response.NewError(w, r, log, err, http.StatusBadRequest, "Failed to get avatar file")
 				return
 			}
+			defer func() {
+				if file != nil {
+					file.Close()
+				}
+			}()
+			input.Avatar = fileHeader
 
-			fileInput := service.FileUploadInput{
-				FileName: input.Avatar.Filename,
-				FileBody: fileBytes,
+			// Загружаем аватар в облако, если он передан
+			if input.Avatar != nil {
+				fileBytes, err := io.ReadAll(file)
+				if err != nil {
+					response.NewError(w, r, log, err, http.StatusInternalServerError, "Failed to read avatar file")
+					return
+				}
+
+				fileInput := service.FileUploadInput{
+					FileName: input.Avatar.Filename,
+					FileBody: fileBytes,
+				}
+
+				avatarPath, err := u.fileService.Upload(ctx, log, fileInput)
+				if err != nil {
+					response.NewError(w, r, log, err, http.StatusInternalServerError, "Failed to upload avatar")
+					return
+				}
+
+				avatarURL := u.fileService.BuildImageURL(avatarPath)
+				avatar = sql.NullString{String: avatarURL, Valid: true}
 			}
-
-			avatarPath, err := u.fileService.Upload(ctx, log, fileInput)
-			if err != nil {
-				response.NewError(w, r, log, err, http.StatusInternalServerError, "Failed to upload avatar")
-				return
-			}
-
-			// Генерируем URL для сохранения в базе данных
-			avatarURL := u.fileService.BuildImageURL(avatarPath)
-			avatar = sql.NullString{String: avatarURL, Valid: true}
 		}
 
-		// Вызываем сервисный метод для обновления пользователя
 		err = u.userService.Update(
 			ctx, log, service.UpdateUserInput{
 				ID:        user.Id,

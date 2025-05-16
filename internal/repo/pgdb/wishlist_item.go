@@ -3,7 +3,7 @@ package pgdb
 import (
 	"context"
 	"log/slog"
-	`time`
+	"time"
 
 	"family-flow-app/internal/entity"
 	"family-flow-app/pkg/postgres"
@@ -169,4 +169,40 @@ func (r *WishlistRepo) GetArchivedByUserID(ctx context.Context, log *slog.Logger
 		items = append(items, item)
 	}
 	return items, nil
+}
+
+// get by wishlist id
+func (r *WishlistRepo) GetByID(ctx context.Context, log *slog.Logger, id string) (entity.WishlistItem, error) {
+	log.Info("WishlistRepo - GetByID")
+	sql, args, _ := r.Builder.Select("*").From(wishlistTable).Where(
+		"id = ?",
+		id,
+	).ToSql()
+
+	rows, err := r.Cluster.Query(ctx, sql, args...)
+	if err != nil {
+		return entity.WishlistItem{}, err
+	}
+	defer rows.Close()
+
+	var item entity.WishlistItem
+	if rows.Next() {
+		err = rows.Scan(
+			&item.ID,
+			&item.Name,
+			&item.Description,
+			&item.Link,
+			&item.Status,
+			&item.CreatedBy,
+			&item.ReservedBy,
+			&item.IsArchived,
+			&item.CreatedAt,
+			&item.UpdatedAt,
+			&item.Photo,
+		)
+		if err != nil {
+			return entity.WishlistItem{}, err
+		}
+	}
+	return item, nil
 }

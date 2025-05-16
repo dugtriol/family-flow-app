@@ -2,12 +2,14 @@ package v1
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"net/http"
-	`time`
+	"time"
 
 	"family-flow-app/internal/service"
 	"family-flow-app/pkg/response"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
 	"github.com/go-playground/validator/v10"
@@ -18,13 +20,15 @@ const (
 )
 
 type WishlistRoutes struct {
-	wishlistService service.WishlistItem
+	wishlistService     service.WishlistItem
+	notificationService service.Notification
+	familyService       service.Family
 }
 
 func NewWishlistRoutes(
-	ctx context.Context, log *slog.Logger, route chi.Router, wishlistService service.WishlistItem,
+	ctx context.Context, log *slog.Logger, route chi.Router, wishlistService service.WishlistItem, notificationService service.Notification, familyService service.Family,
 ) {
-	u := WishlistRoutes{wishlistService: wishlistService}
+	u := WishlistRoutes{wishlistService: wishlistService, notificationService: notificationService, familyService: familyService}
 	route.Route(
 		wishlistString, func(r chi.Router) {
 			r.Post("/", u.create(ctx, log))
@@ -221,7 +225,7 @@ func (u *WishlistRoutes) getByUserID(ctx context.Context, log *slog.Logger) http
 			return
 		}
 
-		items, err := u.wishlistService.GetByID(ctx, log, user.Id)
+		items, err := u.wishlistService.GetByIDs(ctx, log, user.Id)
 		if err != nil {
 			response.NewError(w, r, log, err, http.StatusInternalServerError, "Failed to get wishlist items")
 			return
@@ -255,7 +259,7 @@ func (u *WishlistRoutes) getByFamilyUserID(ctx context.Context, log *slog.Logger
 			return
 		}
 
-		items, err := u.wishlistService.GetByID(ctx, log, id)
+		items, err := u.wishlistService.GetByIDs(ctx, log, id)
 		if err != nil {
 			response.NewError(w, r, log, err, http.StatusInternalServerError, "Failed to get wishlist items")
 			return
@@ -319,7 +323,24 @@ func (u *WishlistRoutes) updateReservedBy(ctx context.Context, log *slog.Logger)
 			)
 			return
 		}
+		// Получаем информацию о создателе элемента
+		wishlistItem, err := u.wishlistService.GetByID(ctx, log, id)
+		if err != nil {
+			response.NewError(w, r, log, err, http.StatusInternalServerError, "Failed to get wishlist item")
+			return
+		}
 
+		// Отправляем уведомление создателю элемента
+		err = u.notificationService.SendNotification(
+			ctx, log, service.NotificationCreateInput{
+				UserID: wishlistItem.CreatedBy, // ID создателя элемента
+				Title:  "Ваш элемент желаний зарезервирован",
+				Body:   fmt.Sprintf("Ваш элемент '%s' был кем то зарезервирован!", wishlistItem.Name),
+			},
+		)
+		if err != nil {
+			log.Error("Failed to send notification: %v", err)
+		}
 		w.WriteHeader(http.StatusOK)
 		render.JSON(w, r, "Wishlist item updated")
 	}

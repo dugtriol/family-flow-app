@@ -53,6 +53,9 @@ type ShoppingItem interface {
 	CancelUpdateReservedBy(
 		ctx context.Context, log *slog.Logger, id string, updatedAt time.Time,
 	) error
+	GetByID(
+		ctx context.Context, log *slog.Logger, id string,
+	) (entity.ShoppingItem, error)
 }
 
 type TodosItem interface {
@@ -63,6 +66,7 @@ type TodosItem interface {
 		[]entity.TodoItem, error,
 	)
 	GetByCreatedBy(ctx context.Context, log *slog.Logger, createdBy string) ([]entity.TodoItem, error)
+	GetByID(ctx context.Context, log *slog.Logger, id string) (entity.TodoItem, error)
 }
 
 type WishlistItem interface {
@@ -75,6 +79,7 @@ type WishlistItem interface {
 		[]entity.WishlistItem, error,
 	)
 	CancelUpdateReservedBy(ctx context.Context, log *slog.Logger, id string) error
+	GetByID(ctx context.Context, log *slog.Logger, id string) (entity.WishlistItem, error)
 }
 
 type Notification interface {
@@ -94,6 +99,7 @@ type Chat interface {
 type Message interface {
 	Create(ctx context.Context, message entity.Message) (entity.Message, error)
 	GetByChatID(ctx context.Context, chatID string) ([]entity.Message, error)
+	GetLastMessageByChatID(ctx context.Context, chatID string) (entity.Message, error)
 }
 
 type Rewards interface {
@@ -105,6 +111,19 @@ type Rewards interface {
 	Redeem(ctx context.Context, userID, rewardID string) error
 	GetRedemptionsByUserID(ctx context.Context, userID string) ([]entity.RewardRedemption, error)
 	GetByID(ctx context.Context, id string) (entity.Reward, error)
+	Update(ctx context.Context, reward entity.Reward) error
+}
+
+type Diary interface {
+	Create(ctx context.Context, log *slog.Logger, item entity.DiaryItem) (string, error)
+	GetByUserID(ctx context.Context, log *slog.Logger, userID string) ([]entity.DiaryItem, error)
+	Update(ctx context.Context, log *slog.Logger, item entity.DiaryItem) error
+	Delete(ctx context.Context, log *slog.Logger, id string) error
+}
+
+type NotificationToken interface {
+	SaveOrUpdate(ctx context.Context, log *slog.Logger, token entity.NotificationToken) error
+	GetByUserID(ctx context.Context, log *slog.Logger, userID string) (*entity.NotificationToken, error)
 }
 
 type Repositories struct {
@@ -117,18 +136,22 @@ type Repositories struct {
 	Chat
 	Message
 	Rewards
+	Diary
+	NotificationToken
 }
 
 func NewRepositories(db *postgres.Database) *Repositories {
 	return &Repositories{
-		User:         pgdb.NewUserRepo(db),
-		Family:       pgdb.NewFamilyRepo(db),
-		ShoppingItem: pgdb.NewShoppingRepo(db),
-		TodosItem:    pgdb.NewTodoRepo(db),
-		WishlistItem: pgdb.NewWishlistRepo(db),
-		Notification: pgdb.NewNotificationsRepo(db),
-		Chat:         pgdb.NewChatsRepo(db),
-		Message:      pgdb.NewMessagesRepo(db),
-		Rewards:      pgdb.NewRewardsRepo(db),
+		User:              pgdb.NewUserRepo(db),
+		Family:            pgdb.NewFamilyRepo(db),
+		ShoppingItem:      pgdb.NewShoppingRepo(db),
+		TodosItem:         pgdb.NewTodoRepo(db),
+		WishlistItem:      pgdb.NewWishlistRepo(db),
+		Notification:      pgdb.NewNotificationsRepo(db),
+		Chat:              pgdb.NewChatsRepo(db),
+		Message:           pgdb.NewMessagesRepo(db),
+		Rewards:           pgdb.NewRewardsRepo(db),
+		Diary:             pgdb.NewDiaryRepo(db),
+		NotificationToken: pgdb.NewNotificationTokenRepo(db),
 	}
 }

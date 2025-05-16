@@ -19,6 +19,7 @@ import (
 const api = "/api"
 
 func NewRouter(ctx context.Context, log *slog.Logger, route *chi.Mux, services *service.Services) {
+	log.Info("Initializing router")
 	route.Use(middleware.Logger)
 	route.Use(middleware.RequestID)
 	route.Use(middleware.Recoverer)
@@ -26,6 +27,7 @@ func NewRouter(ctx context.Context, log *slog.Logger, route *chi.Mux, services *
 	route.Use(mwLogger.New(log))
 	route.Use(render.SetContentType(render.ContentTypeJSON))
 
+	log.Info("Initializing websocket..")
 	route.Group(
 		func(r chi.Router) {
 			r.HandleFunc(
@@ -50,13 +52,14 @@ func NewRouter(ctx context.Context, log *slog.Logger, route *chi.Mux, services *
 				func(g chi.Router) {
 					g.Use(AuthMiddleware(ctx, log, services.User))
 					NewUserRoutes(ctx, log, g, services.User, services.File)
-					NewFamilyRoutes(ctx, log, g, services.Email, services.Family, services.File)
-					NewTodoRoutes(ctx, log, g, services.TodoItem)
-					NewShoppingRoutes(ctx, log, g, services.ShoppingItem)
-					NewWishlistRoutes(ctx, log, g, services.WishlistItem)
+					NewFamilyRoutes(ctx, log, g, services.Email, services.Family, services.File, services.Notification)
+					NewTodoRoutes(ctx, log, g, services.TodoItem, services.Notification)
+					NewShoppingRoutes(ctx, log, g, services.ShoppingItem, services.Notification, services.Family)
+					NewWishlistRoutes(ctx, log, g, services.WishlistItem, services.Notification, services.Family)
 					NewNotificationRoutes(ctx, log, g, services.Notification)
 					NewChatsRoutes(ctx, log, g, services.Chats)
-					NewRewardsRoutes(ctx, log, g, services.Rewards)
+					NewRewardsRoutes(ctx, log, g, services.Rewards, services.Notification, services.Family)
+					NewDiaryRoutes(ctx, log, g, services.Diary)
 				},
 			)
 		},

@@ -24,7 +24,7 @@ func Migrate() {
 		fmt.Printf("%s not set\n", "POSTGRES_CONN")
 	}
 	conn += "?sslmode=disable"
-
+	fmt.Println(fmt.Sprintf("conn: %s", conn))
 	attempts := defaultAttempts
 	var m *migrate.Migrate
 	var err error
@@ -36,6 +36,8 @@ func Migrate() {
 		)
 		if err == nil {
 			break
+		} else {
+			log.Printf("Migrate New error: %s", err)
 		}
 
 		log.Printf("Migrate: pgdb is trying to connect, attempts left: %d", attempts)

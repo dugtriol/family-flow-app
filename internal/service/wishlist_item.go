@@ -3,7 +3,7 @@ package service
 import (
 	"context"
 	"log/slog"
-	`time`
+	"time"
 
 	"family-flow-app/internal/entity"
 	"family-flow-app/internal/repo"
@@ -89,7 +89,7 @@ func (w *WishlistService) Update(ctx context.Context, log *slog.Logger, input Wi
 	return nil
 }
 
-func (w *WishlistService) GetByID(ctx context.Context, log *slog.Logger, id string) ([]entity.WishlistItem, error) {
+func (w *WishlistService) GetByIDs(ctx context.Context, log *slog.Logger, id string) ([]entity.WishlistItem, error) {
 	log.Info("Service - WishlistService - GetByID")
 
 	items, err := w.wishlistRepo.GetByUserID(ctx, log, id)
@@ -149,4 +149,17 @@ func (w *WishlistService) GetArchivedByUserID(
 	}
 
 	return items, nil
+}
+
+// get by wishlist id
+func (w *WishlistService) GetByID(ctx context.Context, log *slog.Logger, id string) (entity.WishlistItem, error) {
+	log.Info("Service - WishlistService - GetByID")
+
+	item, err := w.wishlistRepo.GetByID(ctx, log, id)
+	if err != nil {
+		log.Error("Service - WishlistService - GetByID: %v", err)
+		return entity.WishlistItem{}, err
+	}
+
+	return item, nil
 }

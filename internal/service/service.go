@@ -7,7 +7,6 @@ import (
 	"family-flow-app/config"
 	"family-flow-app/internal/entity"
 	"family-flow-app/internal/repo"
-	"family-flow-app/pkg/redis"
 
 	firebase "firebase.google.com/go/v4"
 )
@@ -78,13 +77,14 @@ type Family interface {
 	GetByFamilyID(ctx context.Context, log *slog.Logger, familyId string) ([]entity.User, error)
 	GetByID(ctx context.Context, log *slog.Logger, id string) (entity.Family, error)
 	UpdatePhoto(ctx context.Context, log *slog.Logger, familyId, photoURL string) error
+	IsExistUserByEmail(ctx context.Context, log *slog.Logger, email string) (entity.User, error)
 }
 
 type WishlistItem interface {
 	Create(ctx context.Context, log *slog.Logger, input WishlistCreateInput) (string, error)
 	Delete(ctx context.Context, log *slog.Logger, id string) error
 	Update(ctx context.Context, log *slog.Logger, input WishlistUpdateInput) error
-	GetByID(ctx context.Context, log *slog.Logger, id string) ([]entity.WishlistItem, error)
+	GetByIDs(ctx context.Context, log *slog.Logger, id string) ([]entity.WishlistItem, error)
 	UpdateReservedBy(ctx context.Context, log *slog.Logger, input WishlistUpdateReservedByInput) error
 	GetArchivedByUserID(
 		ctx context.Context, log *slog.Logger, userID string,
@@ -92,6 +92,7 @@ type WishlistItem interface {
 	CancelUpdateReservedBy(
 		ctx context.Context, log *slog.Logger, input WishlistCancelUpdateReservedByInput,
 	) error
+	GetByID(ctx context.Context, log *slog.Logger, id string) (entity.WishlistItem, error)
 }
 
 type ShoppingItem interface {
@@ -116,6 +117,7 @@ type ShoppingItem interface {
 	CancelUpdateReservedBy(
 		ctx context.Context, log *slog.Logger, input ShoppingCancelUpdateReservedByInput,
 	) error
+	GetByID(ctx context.Context, log *slog.Logger, id string) (entity.ShoppingItem, error)
 }
 
 type TodoItem interface {
@@ -124,11 +126,14 @@ type TodoItem interface {
 	Update(ctx context.Context, log *slog.Logger, input TodoUpdateInput) error
 	GetByAssignedTo(ctx context.Context, log *slog.Logger, assignedTo string) ([]entity.TodoItem, error)
 	GetByCreatedBy(ctx context.Context, log *slog.Logger, createdBy string) ([]entity.TodoItem, error)
+	GetByID(ctx context.Context, log *slog.Logger, id string) (entity.TodoItem, error)
 }
 
 type Notification interface {
-	SendNotification(ctx context.Context, log *slog.Logger, input NotificationCreateInput) error
-	SaveToken(ctx context.Context, userID, token string) error
+	SendNotification(
+		ctx context.Context, log *slog.Logger, input NotificationCreateInput,
+	) error
+	SaveToken(ctx context.Context, log *slog.Logger, userID, token string) error
 	GetNotificationsByUserID(
 		ctx context.Context, log *slog.Logger, userID string,
 	) ([]entity.Notification, error)
@@ -148,6 +153,7 @@ type Chats interface {
 	GetChatsWithParticipants(
 		ctx context.Context, log *slog.Logger, userID string,
 	) ([]entity.Chat, error)
+	GetChatsWithLastMessage(ctx context.Context, log *slog.Logger, userID string) ([]entity.Chat, error)
 }
 
 type Rewards interface {
@@ -158,12 +164,21 @@ type Rewards interface {
 	GetPoints(ctx context.Context, log *slog.Logger, userID string) (int, error)
 	Redeem(ctx context.Context, log *slog.Logger, userID, rewardID string) error
 	GetRedemptionsByUserID(ctx context.Context, log *slog.Logger, userID string) ([]entity.RewardRedemption, error)
+	Update(ctx context.Context, log *slog.Logger, reward entity.Reward) error
+	GetByID(ctx context.Context, log *slog.Logger, id string) (entity.Reward, error)
 }
 
 type File interface {
 	Upload(ctx context.Context, log *slog.Logger, file FileUploadInput) (string, error)
 	Delete(ctx context.Context, path string) (bool, error)
 	BuildImageURL(pathName string) string
+}
+
+type Diary interface {
+	Create(ctx context.Context, log *slog.Logger, input DiaryCreateInput) (string, error)
+	GetByUserID(ctx context.Context, log *slog.Logger, userID string) ([]entity.DiaryItem, error)
+	Update(ctx context.Context, log *slog.Logger, input DiaryUpdateInput) error
+	Delete(ctx context.Context, log *slog.Logger, id string) error
 }
 
 type Services struct {
@@ -177,10 +192,11 @@ type Services struct {
 	Chats        Chats
 	Rewards      Rewards
 	File         File
+	Diary        Diary
 }
 
 type ServicesDependencies struct {
-	Rds    *redis.Redis
+	//Rds    *redis.Redis
 	Repos  *repo.Repositories
 	Config *config.Config
 	App    *firebase.App
@@ -193,14 +209,15 @@ type ServicesDependencies struct {
 func NewServices(ctx context.Context, dep ServicesDependencies) *Services {
 	return &Services{
 		User:         NewUserService(dep.Repos.User),
-		Email:        NewEmailService(dep.Rds, dep.Config.Email),
+		Email:        NewEmailService(dep.Config.Email),
 		Family:       NewFamilyService(dep.Repos.Family, dep.Repos.User),
 		WishlistItem: NewWishlistService(dep.Repos.WishlistItem),
 		ShoppingItem: NewShoppingService(dep.Repos.ShoppingItem),
 		TodoItem:     NewTodoService(dep.Repos.TodosItem, dep.Repos.User),
-		Notification: NewNotificationService(ctx, dep.Rds, dep.App, dep.Repos.Notification),
+		Notification: NewNotificationService(ctx, dep.App, dep.Repos.Notification, dep.Repos.NotificationToken),
 		Chats:        NewChatMessageService(dep.Repos.Chat, dep.Repos.Message),
 		Rewards:      NewRewardsService(dep.Repos.Rewards, dep.Repos.User),
 		File:         NewFileService(ctx, dep.BucketName, dep.Region, dep.EndpointResolver),
+		Diary:        NewDiaryService(dep.Repos.Diary),
 	}
 }
