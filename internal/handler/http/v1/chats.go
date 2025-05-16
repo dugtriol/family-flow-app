@@ -215,6 +215,31 @@ func (u *ChatsRoutes) createChatWithParticipants(ctx context.Context, log *slog.
 // @Failure 400 {object} response.Response
 // @Failure 500 {object} response.Response
 // @Router /chats/user [get]
+// func (u *ChatsRoutes) getChatsByUserID(ctx context.Context, log *slog.Logger) http.HandlerFunc {
+// 	return func(w http.ResponseWriter, r *http.Request) {
+// 		log.Info("Handler - getChatsByUserID - Start")
+
+// 		user, err := GetCurrentUserFromContext(r.Context())
+// 		if err != nil {
+// 			log.Error("Handler - getChatsByUserID - Failed to get current user", "error", err)
+// 			response.NewError(w, r, log, err, http.StatusUnauthorized, "Failed to get current user")
+// 			return
+// 		}
+
+// 		chats, err := u.chatService.GetChatsWithParticipants(ctx, log, user.Id)
+// 		if err != nil {
+// 			log.Error("Handler - getChatsByUserID - Failed to get chats", "error", err)
+// 			response.NewError(w, r, log, err, http.StatusInternalServerError, "Failed to get chats")
+// 			return
+// 		}
+
+//			log.Info("Handler - getChatsByUserID - Chats retrieved successfully", "user_id", user.Id)
+//			w.WriteHeader(http.StatusOK)
+//			render.JSON(w, r, chats)
+//		}
+//	}
+//
+// getChatsByUserID возвращает список чатов с последним сообщением
 func (u *ChatsRoutes) getChatsByUserID(ctx context.Context, log *slog.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log.Info("Handler - getChatsByUserID - Start")
@@ -226,7 +251,7 @@ func (u *ChatsRoutes) getChatsByUserID(ctx context.Context, log *slog.Logger) ht
 			return
 		}
 
-		chats, err := u.chatService.GetChatsWithParticipants(ctx, log, user.Id)
+		chats, err := u.chatService.GetChatsWithLastMessage(ctx, log, user.Id)
 		if err != nil {
 			log.Error("Handler - getChatsByUserID - Failed to get chats", "error", err)
 			response.NewError(w, r, log, err, http.StatusInternalServerError, "Failed to get chats")

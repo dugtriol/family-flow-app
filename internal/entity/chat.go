@@ -9,4 +9,5 @@ type Chat struct {
 	Name         string            `json:"name" db:"name"`
 	CreatedAt    time.Time         `json:"created_at" db:"created_at"`
 	Participants []ChatParticipant `json:"participants" db:"participants"`
+	LastMessage  Message           `json:"last_message,omitempty"`
 }

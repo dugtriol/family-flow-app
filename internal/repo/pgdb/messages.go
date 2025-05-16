@@ -80,3 +80,31 @@ func (r *MessagesRepo) GetByChatID(ctx context.Context, chatID string) ([]entity
 	}
 	return messages, nil
 }
+
+// GetLastMessageByChatID возвращает последнее сообщение для указанного чата
+func (r *MessagesRepo) GetLastMessageByChatID(ctx context.Context, chatID string) (entity.Message, error) {
+	sql, args, _ := r.Builder.Select(
+		"id",
+		"chat_id",
+		"sender_id",
+		"content",
+		"created_at",
+	).From(messagesTable).
+		Where("chat_id = ?", chatID).
+		OrderBy("created_at DESC").
+		Limit(1).
+		ToSql()
+
+	var message entity.Message
+	err := r.Cluster.QueryRow(ctx, sql, args...).Scan(
+		&message.ID,
+		&message.ChatID,
+		&message.SenderID,
+		&message.Content,
+		&message.CreatedAt,
+	)
+	if err != nil {
+		return entity.Message{}, err
+	}
+	return message, nil
+}

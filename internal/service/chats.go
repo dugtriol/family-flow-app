@@ -182,3 +182,27 @@ func (s *ChatMessageService) GetChatsWithParticipants(
 
 	return chats, nil
 }
+
+// GetChatsWithLastMessage возвращает список чатов с последним сообщением
+func (s *ChatMessageService) GetChatsWithLastMessage(ctx context.Context, log *slog.Logger, userID string) ([]entity.Chat, error) {
+	log.Info("Service - ChatMessageService - GetChatsWithLastMessage")
+
+	// Получаем чаты пользователя
+	chats, err := s.chatsRepo.GetChatsWithParticipants(ctx, userID)
+	if err != nil {
+		log.Error("Service - ChatMessageService - GetChatsWithLastMessage - Failed to get chats", "error", err)
+		return nil, fmt.Errorf("failed to get chats: %w", err)
+	}
+
+	// Для каждого чата получаем последнее сообщение
+	for i, chat := range chats {
+		lastMessage, err := s.messagesRepo.GetLastMessageByChatID(ctx, chat.ID)
+		if err != nil {
+			log.Error("Service - ChatMessageService - GetChatsWithLastMessage - Failed to get last message", "chat_id", chat.ID, "error", err)
+			continue // Игнорируем ошибку, если не удалось получить сообщение
+		}
+		chats[i].LastMessage = lastMessage
+	}
+
+	return chats, nil
+}
