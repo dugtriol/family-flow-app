@@ -124,3 +124,30 @@ func (r *TodoRepo) GetByAssignedTo(ctx context.Context, log *slog.Logger, assign
 func (r *TodoRepo) GetByCreatedBy(ctx context.Context, log *slog.Logger, createdBy string) ([]entity.TodoItem, error) {
 	return r.getByField(ctx, log, "created_by", createdBy)
 }
+
+// get by id
+func (r *TodoRepo) GetByID(ctx context.Context, log *slog.Logger, id string) (entity.TodoItem, error) {
+	log.Info("TodoRepo - GetByID")
+	sql, args, _ := r.Builder.Select("*").From(todoTable).Where("id = ?", id).ToSql()
+
+	row := r.Cluster.QueryRow(ctx, sql, args...)
+	var item entity.TodoItem
+	if err := row.Scan(
+		&item.ID,
+		&item.FamilyID,
+		&item.Title,
+		&item.Description,
+		&item.Status,
+		&item.Deadline,
+		&item.AssignedTo,
+		&item.CreatedBy,
+		&item.IsArchived,
+		&item.CreatedAt,
+		&item.UpdatedAt,
+		&item.Point,
+	); err != nil {
+		return entity.TodoItem{}, err
+	}
+
+	return item, nil
+}

@@ -2,12 +2,14 @@ package v1
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"time"
 
 	"family-flow-app/internal/service"
 	"family-flow-app/pkg/response"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
 	"github.com/go-playground/validator/v10"
@@ -18,13 +20,15 @@ const (
 )
 
 type TodoRoutes struct {
-	todoService service.TodoItem
+	todoService         service.TodoItem
+	notificationService service.Notification
 }
 
 func NewTodoRoutes(
 	ctx context.Context, log *slog.Logger, route chi.Router, todoService service.TodoItem,
+	notificationService service.Notification,
 ) {
-	u := TodoRoutes{todoService: todoService}
+	u := TodoRoutes{todoService: todoService, notificationService: notificationService}
 	route.Route(
 		todoString, func(r chi.Router) {
 			r.Post("/", u.create(ctx, log))
@@ -97,6 +101,18 @@ func (u *TodoRoutes) create(ctx context.Context, log *slog.Logger) http.HandlerF
 			return
 		}
 
+		// Отправляем уведомление пользователю, которому назначено задание
+		err = u.notificationService.SendNotification(
+			ctx, log, service.NotificationCreateInput{
+				UserID: input.AssignedTo,
+				Title:  "Новое задание",
+				Body:   fmt.Sprintf("Вам назначено новое задание: '%s'", input.Title),
+			},
+		)
+		if err != nil {
+			log.Error("Failed to send notification: %v", err)
+		}
+
 		w.WriteHeader(http.StatusCreated)
 		render.JSON(w, r, "Todo created")
 	}
@@ -164,7 +180,7 @@ type inputTodoUpdate struct {
 // @Router /todo/{id} [put]
 func (u *TodoRoutes) update(ctx context.Context, log *slog.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		_, err := GetCurrentUserFromContext(r.Context())
+		user, err := GetCurrentUserFromContext(r.Context())
 		if err != nil {
 			response.NewError(w, r, log, err, http.StatusUnauthorized, ErrNoUserInContextMsg)
 			return
@@ -202,6 +218,28 @@ func (u *TodoRoutes) update(ctx context.Context, log *slog.Logger) http.HandlerF
 		if err != nil {
 			response.NewError(w, r, log, err, http.StatusInternalServerError, "Failed to update todo")
 			return
+		}
+
+		// Если задание завершено, отправляем уведомление создателю
+		if input.Status == "Completed" {
+			// Получаем задание, чтобы узнать, кто его создал
+			todo, err := u.todoService.GetByID(ctx, log, id)
+			if err != nil {
+				response.NewError(w, r, log, err, http.StatusInternalServerError, "Failed to fetch todo")
+				return
+			}
+
+			// Отправляем уведомление создателю задания
+			err = u.notificationService.SendNotification(
+				ctx, log, service.NotificationCreateInput{
+					UserID: todo.AssignedTo,
+					Title:  "Задание выполнено",
+					Body:   fmt.Sprintf("Задание '%s' было выполнено пользователем %s", todo.Title, user.Id),
+				},
+			)
+			if err != nil {
+				log.Error("Failed to send notification: %v", err)
+			}
 		}
 
 		w.WriteHeader(http.StatusOK)

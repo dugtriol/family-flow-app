@@ -130,3 +130,16 @@ func (t *TodoService) GetByCreatedBy(ctx context.Context, log *slog.Logger, crea
 
 	return items, nil
 }
+
+// get by id
+func (t *TodoService) GetByID(ctx context.Context, log *slog.Logger, id string) (entity.TodoItem, error) {
+	log.Info("Service - TodoService - GetByID")
+
+	item, err := t.todoRepo.GetByID(ctx, log, id)
+	if err != nil {
+		log.Error("Service - TodoService - GetByID: %v", err)
+		return entity.TodoItem{}, err
+	}
+
+	return item, nil
+}
