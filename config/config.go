@@ -13,9 +13,9 @@ type (
 		HTTP     `yaml:"http"`
 		Database `yaml:"database"`
 		Log      `yaml:"log"`
-		Redis    `yaml:"redis"`
-		Email    `yaml:"email"`
-		S3Data   `yaml:"s3"`
+
+		Email  `yaml:"email"`
+		S3Data `yaml:"s3"`
 	}
 
 	HTTP struct {
@@ -34,23 +34,17 @@ type (
 		Level string `env-required:"true" yaml:"level" env:"LOG_LEVEL"`
 	}
 
-	Redis struct {
-		Addr     string `env-required:"true" yaml:"addr" env:"REDIS_ADDR"`
-		Password string `env-required:"true" yaml:"password" env:"REDIS_PASSWORD"`
-		DB       int    `env-required:"true" yaml:"db" env:"REDIS_DB"`
-	}
-
 	Email struct {
-		FromEmail string `env-required:"true" yaml:"from_email" env:"FROM_EMAIL"`
-		Password  string `env-required:"true" yaml:"password" env:"FROM_EMAIL_PASSWORD"`
-		SMTP      string `env-required:"true" yaml:"smtp" env:"FROM_EMAIL_SMTP"`
-		Addr      string `env-required:"true" yaml:"smtp_addr" env:"SMTP_ADDR"`
+		FromEmail string `env-required:"true"  env:"FROM_EMAIL"`
+		Password  string `env-required:"true"  env:"FROM_EMAIL_PASSWORD"`
+		SMTP      string `env-required:"true"  env:"FROM_EMAIL_SMTP"`
+		Addr      string `env-required:"true"  env:"SMTP_ADDR"`
 	}
 
 	S3Data struct {
-		BucketName       string `env-required:"true" yaml:"port" env:"BUCKET_NAME"`
-		Region           string `env-required:"true" yaml:"port" env:"REGION"`
-		EndpointResolver string `env-required:"true" yaml:"port" env:"ENDPOINT_RESOLVER"`
+		BucketName       string `env-required:"true"  env:"BUCKET_NAME"`
+		Region           string `env-required:"true"  env:"REGION"`
+		EndpointResolver string `env-required:"true" env:"ENDPOINT_RESOLVER"`
 	}
 )
 
