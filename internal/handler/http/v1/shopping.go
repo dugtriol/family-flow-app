@@ -2,11 +2,13 @@ package v1
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"net/http"
 
 	"family-flow-app/internal/service"
 	"family-flow-app/pkg/response"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
 	"github.com/go-playground/validator/v10"
@@ -17,13 +19,15 @@ const (
 )
 
 type ShoppingRoutes struct {
-	shoppingService service.ShoppingItem
+	shoppingService     service.ShoppingItem
+	notificationService service.Notification
+	familyService       service.Family
 }
 
 func NewShoppingRoutes(
-	ctx context.Context, log *slog.Logger, route chi.Router, shoppingService service.ShoppingItem,
+	ctx context.Context, log *slog.Logger, route chi.Router, shoppingService service.ShoppingItem, notificationService service.Notification, familyService service.Family,
 ) {
-	u := ShoppingRoutes{shoppingService: shoppingService}
+	u := ShoppingRoutes{shoppingService: shoppingService, notificationService: notificationService, familyService: familyService}
 	route.Route(
 		shoppingString, func(r chi.Router) {
 			r.Post("/", u.create(ctx, log))
@@ -94,6 +98,29 @@ func (u *ShoppingRoutes) create(ctx context.Context, log *slog.Logger) http.Hand
 		if err != nil {
 			response.NewError(w, r, log, err, http.StatusInternalServerError, "Failed to create shopping item")
 			return
+		}
+
+		if input.Visibility == "Public" {
+			family, err := u.familyService.GetByFamilyID(ctx, log, input.FamilyId)
+			if err != nil {
+				response.NewError(w, r, log, err, http.StatusInternalServerError, "Failed to get family members")
+				return
+			}
+			for _, familyMember := range family {
+				if familyMember.Id == user.Id {
+					continue
+				}
+				err = u.notificationService.SendNotification(
+					ctx, log, service.NotificationCreateInput{
+						UserID: familyMember.Id, // Отправляем всем членам семьи
+						Title:  "Новый элемент в списке покупок",
+						Body:   fmt.Sprintf("Пользователь %s добавил новый элемент: '%s'", user.Name, input.Title),
+					},
+				)
+				if err != nil {
+					log.Error("Failed to send notification: %v", err)
+				}
+			}
 		}
 
 		w.WriteHeader(http.StatusCreated)
@@ -311,6 +338,23 @@ func (u *ShoppingRoutes) updateReservedBy(ctx context.Context, log *slog.Logger)
 			return
 		}
 
+		item, err := u.shoppingService.GetByID(ctx, log, id)
+		if err != nil {
+			response.NewError(w, r, log, err, http.StatusInternalServerError, "Failed to get shopping item")
+			return
+		}
+		// Отправляем уведомление создателю элемента
+		err = u.notificationService.SendNotification(
+			ctx, log, service.NotificationCreateInput{
+				UserID: user.Id, // ID создателя элемента
+				Title:  "Элемент зарезервирован",
+				Body:   fmt.Sprintf("Элемент '%s' был зарезервирован пользователем %s", item.Title, user.Name),
+			},
+		)
+		if err != nil {
+			log.Error("Failed to send notification: %v", err)
+		}
+
 		w.WriteHeader(http.StatusOK)
 		render.JSON(w, r, "Shopping item updated")
 	}
@@ -350,6 +394,24 @@ func (u *ShoppingRoutes) updateBuyerId(ctx context.Context, log *slog.Logger) ht
 		if err != nil {
 			response.NewError(w, r, log, err, http.StatusInternalServerError, "Failed to update buyer ID")
 			return
+		}
+
+		item, err := u.shoppingService.GetByID(ctx, log, id)
+		if err != nil {
+			response.NewError(w, r, log, err, http.StatusInternalServerError, "Failed to get shopping item")
+			return
+		}
+
+		// Отправляем уведомление создателю элемента
+		err = u.notificationService.SendNotification(
+			ctx, log, service.NotificationCreateInput{
+				UserID: user.Id, // ID создателя элемента
+				Title:  "Элемент куплен",
+				Body:   fmt.Sprintf("Элемент '%s' был куплен пользователем %s", item, user.Name),
+			},
+		)
+		if err != nil {
+			log.Error("Failed to send notification: %v", err)
 		}
 
 		w.WriteHeader(http.StatusOK)

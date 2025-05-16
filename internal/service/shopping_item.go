@@ -2,9 +2,9 @@ package service
 
 import (
 	"context"
-	`fmt`
+	"fmt"
 	"log/slog"
-	`time`
+	"time"
 
 	"family-flow-app/internal/entity"
 	"family-flow-app/internal/repo"
@@ -187,4 +187,17 @@ func (s *ShoppingService) CancelUpdateReservedBy(
 	}
 
 	return nil
+}
+
+// get by id
+func (s *ShoppingService) GetByID(ctx context.Context, log *slog.Logger, id string) (entity.ShoppingItem, error) {
+	log.Info("Service - ShoppingService - GetByID")
+
+	items, err := s.shoppingRepo.GetByID(ctx, log, id)
+	if err != nil {
+		log.Error("Service - ShoppingService - GetByID: %v", err)
+		return entity.ShoppingItem{}, err
+	}
+
+	return items, nil
 }

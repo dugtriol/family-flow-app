@@ -2,9 +2,9 @@ package pgdb
 
 import (
 	"context"
-	`fmt`
+	"fmt"
 	"log/slog"
-	`time`
+	"time"
 
 	"family-flow-app/internal/entity"
 	"family-flow-app/pkg/postgres"
@@ -235,4 +235,37 @@ func (r *ShoppingRepo) GetArchivedByUserID(
 		items = append(items, item)
 	}
 	return items, nil
+}
+
+// get by id
+func (r *ShoppingRepo) GetByID(
+	ctx context.Context, log *slog.Logger, id string,
+) (entity.ShoppingItem, error) {
+	log.Info("ShoppingRepo - GetByID")
+	sql, args, _ := r.Builder.Select("*").From(shoppingTable).Where(
+		"id = ?",
+		id,
+	).ToSql()
+
+	row := r.Cluster.QueryRow(ctx, sql, args...)
+
+	var item entity.ShoppingItem
+	err := row.Scan(
+		&item.ID,
+		&item.FamilyID,
+		&item.Title,
+		&item.Description,
+		&item.Status,
+		&item.Visibility,
+		&item.CreatedBy,
+		&item.ReservedBy,
+		&item.BuyerId,
+		&item.IsArchived,
+		&item.CreatedAt,
+		&item.UpdatedAt,
+	)
+	if err != nil {
+		return entity.ShoppingItem{}, err
+	}
+	return item, nil
 }
