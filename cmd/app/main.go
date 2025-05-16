@@ -1,11 +1,11 @@
 package main
 
 import (
-	"log"
+	`log`
 
 	_ "family-flow-app/docs"
 	"family-flow-app/internal/app"
-	"github.com/joho/godotenv"
+	`github.com/joho/godotenv`
 )
 
 const (
