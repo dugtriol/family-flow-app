@@ -57,7 +57,7 @@ func (f *FamilyService) AddMember(ctx context.Context, log *slog.Logger, input A
 	var user entity.User
 	var err error
 
-	if user, err = f.isExistUser(ctx, log, input.UserEmail); err != nil {
+	if user, err = f.IsExistUserByEmail(ctx, log, input.UserEmail); err != nil {
 		return ErrUserNotFound
 	}
 
@@ -75,7 +75,7 @@ func (f *FamilyService) AddMember(ctx context.Context, log *slog.Logger, input A
 	return nil
 }
 
-func (f *FamilyService) isExistUser(ctx context.Context, log *slog.Logger, email string) (entity.User, error) {
+func (f *FamilyService) IsExistUserByEmail(ctx context.Context, log *slog.Logger, email string) (entity.User, error) {
 	log.Info(fmt.Sprintf("Service - FamilyService - isExistUser"))
 
 	user, err := f.userRepo.GetByEmail(ctx, email)
