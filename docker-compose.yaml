@@ -14,13 +14,6 @@ services:
       retries: 3
     volumes:
       - postgres_data:/var/lib/pgdb/data
-  redis:
-    container_name: redis
-    image: redis:latest
-    ports:
-      - "6379:6379"
-    env_file:
-      - .env
 #  app:
 #    container_name: app
 #    build:
@@ -32,7 +25,9 @@ services:
 #    depends_on:
 #      - postgres
 #    env_file:
-#      - .env
+#      - local.env
+#    volumes:
+#      - ~/.aws:/root/.aws:ro
 
 volumes:
   postgres_data:
