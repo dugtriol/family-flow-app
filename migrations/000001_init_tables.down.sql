@@ -36,4 +36,6 @@ DROP TABLE IF EXISTS "rewards";
 
 DROP TABLE IF EXISTS "reward_redemptions";
 
+DROP TABLE IF EXISTS "fcm_tokens";
+
 COMMIT;

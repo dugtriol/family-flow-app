@@ -162,4 +162,12 @@ CREATE TABLE IF NOT EXISTS reward_redemptions (
     redeemed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE fcm_tokens (
+    id SERIAL PRIMARY KEY,
+    user_id UUID NOT NULL UNIQUE,
+    token TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
 COMMIT;
