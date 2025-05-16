@@ -162,7 +162,7 @@ func (s *RewardsService) GetRedemptionsByUserID(
 	return redemptions, nil
 }
 
-// GetByID 
+// GetByID
 // возвращает информацию о вознаграждении по его ID
 func (s *RewardsService) GetByID(ctx context.Context, log *slog.Logger, id string) (entity.Reward, error) {
 	log.Info("Service - RewardsService - GetByID", "id", id)
@@ -174,4 +174,18 @@ func (s *RewardsService) GetByID(ctx context.Context, log *slog.Logger, id strin
 	}
 	log.Info("Service - RewardsService - GetByID - Reward retrieved successfully", "reward", reward)
 	return reward, nil
+}
+
+// Update обновляет существующую награду
+func (s *RewardsService) Update(ctx context.Context, log *slog.Logger, reward entity.Reward) error {
+	log.Info("Service - RewardsService - Update", "rewardID", reward.ID)
+
+	err := s.rewardsRepo.Update(ctx, reward)
+	if err != nil {
+		log.Error("Service - RewardsService - Update - Failed to update reward", "error", err)
+		return fmt.Errorf("failed to update reward: %w", err)
+	}
+
+	log.Info("Service - RewardsService - Update - Reward updated successfully")
+	return nil
 }

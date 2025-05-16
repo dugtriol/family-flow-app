@@ -212,3 +212,32 @@ func (r *RewardsRepo) GetByID(ctx context.Context, id string) (entity.Reward, er
 	}
 	return reward, nil
 }
+
+func (r *RewardsRepo) Update(ctx context.Context, reward entity.Reward) error {
+	sql, args, _ := r.Builder.Update(rewardsTable).
+		Set("title", reward.Title).
+		Set("description", reward.Description).
+		Set("cost", reward.Cost).
+		Set("updated_at", "NOW()").
+		Where(squirrel.Eq{"id": reward.ID}).
+		ToSql()
+
+	_, err := r.Cluster.Exec(ctx, sql, args...)
+	if err != nil {
+		return fmt.Errorf("failed to update reward: %w", err)
+	}
+	return nil
+}
+
+// Delete удаляет вознаграждение
+func (r *RewardsRepo) Delete(ctx context.Context, id string) error {
+	sql, args, _ := r.Builder.Delete(rewardsTable).Where(
+		squirrel.Eq{"id": id},
+	).ToSql()
+
+	_, err := r.Cluster.Exec(ctx, sql, args...)
+	if err != nil {
+		return fmt.Errorf("failed to delete reward: %w", err)
+	}
+	return nil
+}
